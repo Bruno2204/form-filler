@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Form Filler",
+  "version": "1.0",
+  "description": "Rellena formularios Google",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
