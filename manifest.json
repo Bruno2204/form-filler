@@ -16,7 +16,7 @@
   "web_accessible_resources": [
     {
       "resources": ["popup.html", "parser.js", "popup.js"],
-      "matches": ["https://docs.google.com/forms/*"]
+      "matches": ["*://docs.google.com/*"]
     }
   ]
 }
