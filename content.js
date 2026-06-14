@@ -444,6 +444,17 @@ window.FormFiller = {
         }
       }
 
+      // Últimos 5 dígitos del EID
+      if (!data.esEsim) {
+        const eidInput =
+          findInputByLabel('digitos del eid') ||
+          findInputByLabel('dígitos del eid') ||
+          findInputByLabel('eid');
+        if (eidInput) {
+          if (setInput(eidInput, 'NA')) filled++;
+        }
+      }
+
       // Dropdown Usuario Backend -> CHT00096
       // const items = document.querySelectorAll('div[jsmodel="CP1oW"]');
       // for (const item of items) {
