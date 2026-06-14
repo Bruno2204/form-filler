@@ -3,126 +3,348 @@
 
   <head>
     <meta charset="UTF-8">
+    <title>Form Filler</title>
+    <!-- Importar tipografía moderna de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        width: 360px;
-        padding: 14px;
+      :root {
+        --primary: #4285f4;
+        --primary-hover: #3367d6;
+        --success: #34a853;
+        --success-hover: #2d8e47;
+        --error: #ea4335;
+        --warning: #fbbc05;
+        --gray-bg: #f8f9fa;
+        --gray-border: #dadce0;
+        --text-main: #202124;
+        --text-secondary: #5f6368;
+        --radius: 8px;
+        --font: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
 
-      textarea {
-        width: 100%;
-        height: 190px;
-        font-size: 12px;
-        border: 1px solid #ccc;
-        border-radius: 6px;
-        padding: 8px;
+      * {
         box-sizing: border-box;
-        resize: vertical;
+        margin: 0;
+        padding: 0;
       }
 
-      .buttons {
+      body {
+        font-family: var(--font);
+        color: var(--text-main);
+        background-color: #ffffff;
+        width: 100%;
+        min-width: 380px;
+        max-width: 420px;
+        padding: 16px;
+        overflow-x: hidden;
+      }
+
+      /* --- Encabezado / Selector de Producto --- */
+      .header-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 16px;
+      }
+
+      .btn-product {
+        font-family: var(--font);
+        background: var(--gray-bg);
+        border: 1px solid var(--gray-border);
+        color: var(--text-secondary);
+        padding: 6px 2px;
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+
+      .btn-product:hover {
+        background: #f1f3f4;
+        color: var(--text-main);
+      }
+
+      .btn-product.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+        box-shadow: 0 2px 6px rgba(66, 133, 244, 0.3);
+      }
+
+      /* --- Contenedor de Textareas Dinámicos --- */
+      .inputs-container {
         display: flex;
-        gap: 8px;
-        margin-top: 10px;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 16px;
       }
 
-      button {
-        flex: 1;
-        padding: 9px 4px;
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .input-group.hidden {
+        display: none;
+      }
+
+      .input-group label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .input-group textarea {
+        font-family: var(--font);
+        width: 100%;
+        height: 75px;
+        font-size: 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: var(--radius);
+        padding: 8px;
+        resize: none;
+        outline: none;
+        transition: border-color 0.2s;
+        background-color: #fafafa;
+      }
+
+      .input-group textarea:focus {
+        border-color: var(--primary);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+      }
+
+      /* --- Zona de Resultado Final --- */
+      .result-container {
+        background: #f8f9fa;
+        border: 1px solid var(--gray-border);
+        border-radius: var(--radius);
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+
+      .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .result-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+
+      .btn-copy {
+        font-family: var(--font);
+        background: var(--success);
+        color: white;
+        border: none;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .btn-copy:hover {
+        background: var(--success-hover);
+      }
+
+      .result-text {
+        font-family: monospace;
+        font-size: 11px;
+        width: 100%;
+        height: 120px;
+        border: 1px solid var(--gray-border);
+        border-radius: 4px;
+        background: white;
+        padding: 6px;
+        resize: none;
+        outline: none;
+        color: #333;
+        white-space: pre;
+        overflow-y: auto;
+      }
+
+      /* --- Alertas y Errores --- */
+      .validation-alert {
+        font-size: 11px;
+        color: var(--error);
+        margin-top: 4px;
+        display: none;
+        font-weight: 500;
+      }
+
+      /* --- Botones de Acción (Form Rellenado) --- */
+      .action-section {
+        border-top: 1px solid var(--gray-border);
+        padding-top: 14px;
+      }
+
+      .action-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+      }
+
+      .buttons-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+
+      .btn-action {
+        font-family: var(--font);
+        padding: 8px 4px;
         border: none;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 11px;
+        font-weight: 500;
         cursor: pointer;
         color: white;
+        transition: all 0.2s;
+        text-align: center;
       }
 
-      #btn1 {
-        background: #4285f4;
-      }
+      #btn1 { background: #4285f4; }
+      #btn1:hover { background: #3367d6; }
+      #btn2 { background: #34a853; }
+      #btn2:hover { background: #2d8e47; }
+      #btn3 { background: #ea4335; }
+      #btn3:hover { background: #d63b2f; }
+      #btnClear { background: #757575; }
+      #btnClear:hover { background: #616161; }
 
-      #btn1:hover {
-        background: #3367d6;
-      }
-
-      #btn2 {
-        background: #0f9d58;
-      }
-
-      #btn2:hover {
-        background: #0b8043;
-      }
-
-      #btn3 {
-        background: #db4437;
-      }
-
-      #btn3:hover {
-        background: #c53929;
-      }
-
-      #btnClear {
-        background: #607d8b;
-      }
-
-      #btnClear:hover {
-        background: #455a64;
-      }
-
-      #btnBackend {
-        background: #ff9800;
-        flex: none;
+      .btn-full {
         width: 100%;
+        background: #fbbc05;
+        color: #202124;
         margin-top: 6px;
+        font-weight: 600;
       }
-
-      #btnBackend:hover {
-        background: #e68900;
+      .btn-full:hover {
+        background: #f3ad03;
       }
 
       #status {
         margin-top: 8px;
-        font-size: 12px;
-        color: #555;
-        min-height: 16px;
-      }
-
-      #preview {
-        margin-top: 10px;
         font-size: 11px;
-        color: #333;
-        background: #f5f5f5;
-        border-radius: 6px;
-        padding: 8px;
-        display: none;
-      }
-
-      #preview div {
-        margin: 2px 0;
-      }
-
-      label {
-        font-size: 12px;
-        font-weight: bold;
-        color: #333;
+        font-weight: 500;
+        color: var(--text-secondary);
+        min-height: 16px;
+        text-align: center;
       }
     </style>
   </head>
 
   <body>
-    <label>Pega los datos del cliente:</label><br><br>
-    <textarea id="input" placeholder="POSPAGO CAC&#10;PLAN: Pro ilimitado&#10;..."></textarea>
-    <div id="preview"></div>
-    <div class="buttons">
-      <button id="btn1">Página 1</button>
-      <button id="btn2">Página 2</button>
-      <button id="btn3">Página 3</button>
-      <button id="btnClear">Borrar</button>
+    <!-- Selector de Productos -->
+    <div class="header-title">Seleccionar Producto</div>
+    <div class="products-grid">
+      <button class="btn-product active" data-product="POS_ESIM">POS ESIM</button>
+      <button class="btn-product" data-product="POS_CAC">POS CAC</button>
+      <button class="btn-product" data-product="LN_ESIM">LN ESIM</button>
+      <button class="btn-product" data-product="LN_CAC">LN CAC</button>
+      <button class="btn-product" data-product="PRE_ESIM">PRE ESIM</button>
+      <button class="btn-product" data-product="PREPAGO">PREPAGO</button>
+      <button class="btn-product" data-product="ADIC_CAC">ADIC CAC</button>
     </div>
-    <div class="buttons">
-      <button id="btnBackend">Usuario Backend</button>
+
+    <!-- Contenedor Dinámico de Entradas -->
+    <div class="inputs-container">
+      <!-- 1. Datos de Línea -->
+      <div class="input-group" id="group-linea">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+          Datos de Línea (Plan, DN, NIP, Correo, etc.)
+        </label>
+        <textarea id="input-linea" placeholder="Pega el bloque con plan, dn, nip, correo..."></textarea>
+      </div>
+
+      <!-- 2. Datos de CURP / Personales -->
+      <div class="input-group" id="group-curp">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          Datos de CURP / Personales (Nombre, Fecha Nac, Estado...)
+        </label>
+        <textarea id="input-curp" placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."></textarea>
+      </div>
+
+      <!-- 3. Datos de Dirección -->
+      <div class="input-group" id="group-direccion">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          Dirección de Facturación (Calle, CP, Colonia...)
+        </label>
+        <textarea id="input-direccion" placeholder="Pega la dirección de facturación..."></textarea>
+      </div>
+
+      <!-- 4. Datos CAC -->
+      <div class="input-group" id="group-cac">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
+          Datos CAC (CAC, CP, FVC)
+        </label>
+        <textarea id="input-cac" placeholder="Pega CAC, C.P., FVC..."></textarea>
+      </div>
+
+      <!-- 5. Datos EID / ID / Chat -->
+      <div class="input-group" id="group-eid">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/></svg>
+          ID, Chat y EID (Equipo, EID...)
+        </label>
+        <textarea id="input-eid" placeholder="Pega EID, ID de chat, etc..."></textarea>
+      </div>
     </div>
+
+    <!-- Alerta de Validación de Teléfono -->
+    <div class="validation-alert" id="phone-alert">⚠ El número telefónico debe tener exactamente 10 dígitos.</div>
+
+    <!-- Resultado Formateado -->
+    <div class="result-container">
+      <div class="result-header">
+        <span class="result-title">Resultado Formateado</span>
+        <button class="btn-copy" id="btnCopy">Copiar</button>
+      </div>
+      <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
+    </div>
+
+    <!-- Botones de Acción para Rellenar Formulario -->
+    <div class="action-section">
+      <div class="action-title">Rellenar Google Form</div>
+      <div class="buttons-grid">
+        <button class="btn-action" id="btn1">Pág 1</button>
+        <button class="btn-action" id="btn2">Pág 2</button>
+        <button class="btn-action" id="btn3">Pág 3</button>
+        <button class="btn-action" id="btnClear">Limpiar</button>
+      </div>
+      <button class="btn-action btn-full" id="btnBackend">Usuario Backend</button>
+    </div>
+
     <div id="status"></div>
+
     <script src="parser.js"></script>
     <script src="popup.js"></script>
   </body>
