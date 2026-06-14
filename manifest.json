@@ -3,9 +3,14 @@
   "name": "Form Filler",
   "version": "1.0",
   "description": "Rellena formularios Google",
-  "permissions": ["activeTab", "scripting"],
-  "action": {
-    "default_popup": "popup.html"
+  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "host_permissions": ["https://docs.google.com/forms/*"],
+  "action": {},
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {

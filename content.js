@@ -211,6 +211,14 @@ window.FormFiller = {
       if (setInput(findInputByLabel('CURP'), data.curp)) filled++;
       if (setInput(findInputByLabel('DN de contacto'), data.dn)) filled++;
       if (setInput(findInputByLabel('E-mail'), data.email)) filled++;
+      if (setInput(findInputByLabel('id lead'), data.chatId)) filled++;
+      if (
+        setInput(
+          findInputByLabel('dn con el que se comunica'),
+          data.dnChat,
+        )
+      )
+        filled++;
 
       return { ok: true, filled };
     } catch (e) {
@@ -275,7 +283,7 @@ window.FormFiller = {
           filled++;
       }
 
-      if (formaEnvio === 'cav' && data.cp) {
+      if (formaEnvio === 'cav' && data.cpCAC) {
         let cpInput = null;
         for (const item of items) {
           const txt =
@@ -291,7 +299,7 @@ window.FormFiller = {
             break;
           }
         }
-        if (setInput(cpInput, data.cp)) filled++;
+        if (setInput(cpInput, data.cpCAC)) filled++;
       }
 
       return { ok: true, filled };
@@ -414,9 +422,23 @@ window.FormFiller = {
         }
       }
 
-      // Equipo Modelo (texto)
-      if (data.equipo) {
-        if (setInput(findInputByLabel('equipo modelo'), data.equipo)) filled++;
+      // Equipo Modelo (línea nueva esim / portabilidad esim) → "EID"
+      if (data.esEsim) {
+        for (const item of document.querySelectorAll('div[jsmodel="CP1oW"]')) {
+          const label =
+            item.querySelector('.M7eMe')?.innerText?.toLowerCase() || '';
+          if (label.includes('equipo modelo') && label.includes('esim')) {
+            const listbox = item.querySelector('div[role="listbox"]');
+            if (listbox) {
+              const success = await selectDropdownOption(item, 'EID');
+              if (success) filled++;
+            } else {
+              const input = item.querySelector('input.whsOnd, textarea.whsOnd');
+              if (setInput(input, 'EID')) filled++;
+            }
+            break;
+          }
+        }
       }
 
       // FVC asignada (fecha) – solo si es con CAC
@@ -445,14 +467,15 @@ window.FormFiller = {
       }
 
       // Últimos 5 dígitos del EID
-      if (!data.esEsim) {
-        const eidInput =
-          findInputByLabel('digitos del eid') ||
-          findInputByLabel('dígitos del eid') ||
-          findInputByLabel('eid');
-        if (eidInput) {
-          if (setInput(eidInput, 'NA')) filled++;
-        }
+      const eidInput =
+        findInputByLabel('digitos del eid') ||
+        findInputByLabel('dígitos del eid') ||
+        findInputByLabel('ultimos') ||
+        findInputByLabel('últimos') ||
+        findInputByLabel('eid');
+      if (eidInput) {
+        const eidValue = data.esEsim && data.eid ? data.eid : 'NA';
+        if (setInput(eidInput, eidValue)) filled++;
       }
 
       // Dropdown Usuario Backend -> CHT00096

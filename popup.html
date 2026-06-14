@@ -37,7 +37,8 @@
         width: 100%;
         min-width: 380px;
         max-width: 420px;
-        height: 600px;
+        height: 100vh;
+        min-height: 600px;
         padding: 12px 16px;
         overflow: hidden;
         display: flex;
@@ -46,9 +47,15 @@
 
       .scrollable-content {
         flex: 1;
+        min-height: 0;
         overflow-y: auto;
         padding-right: 4px;
         margin-bottom: 12px;
+      }
+
+      .result-container,
+      .action-section {
+        flex-shrink: 0;
       }
 
 
@@ -133,6 +140,12 @@
         box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
       }
 
+      .input-group textarea.textarea-compact {
+        height: 54px;
+        line-height: 1.35;
+        padding: 6px 8px;
+      }
+
       /* --- Zona de Resultado Final --- */
       .result-container {
         background: #f8f9fa;
@@ -149,10 +162,92 @@
         margin-bottom: 8px;
       }
 
+      .result-title-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
       .result-title {
         font-size: 12px;
         font-weight: 600;
         color: var(--text-main);
+      }
+
+      .missing-data-badge {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--error);
+        display: none;
+        align-items: center;
+        gap: 3px;
+        white-space: nowrap;
+      }
+
+      .missing-data-badge.visible {
+        display: inline-flex;
+      }
+
+      .missing-data-badge::before {
+        content: '●';
+        font-size: 8px;
+      }
+
+      .btn-missing-info {
+        font-family: var(--font);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 5px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--error);
+        background: #fce8e6;
+        border: 1px solid #f5c1bc;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height: 1;
+        transition: background 0.15s;
+      }
+
+      .btn-missing-info.visible {
+        display: inline-flex;
+      }
+
+      .btn-missing-info:hover {
+        background: #f9d0cc;
+      }
+
+      .missing-details-panel {
+        display: none;
+        margin-bottom: 8px;
+        padding: 8px 10px;
+        background: #fff5f5;
+        border: 1px solid #f5c1bc;
+        border-radius: 6px;
+        font-size: 10px;
+        color: var(--error);
+        line-height: 1.5;
+      }
+
+      .missing-details-panel.visible {
+        display: block;
+      }
+
+      .missing-details-panel ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+
+      .missing-details-panel li {
+        margin-bottom: 2px;
+      }
+
+      .missing-details-title {
+        font-weight: 600;
+        margin-bottom: 4px;
       }
 
       .btn-copy {
@@ -238,6 +333,12 @@
       #btnClear { background: #757575; }
       #btnClear:hover { background: #616161; }
 
+      .btn-action:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
 
 
       #status {
@@ -269,7 +370,7 @@
         <div class="input-group" id="group-linea">
           <label>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
-            Datos de Línea (Plan, DN, NIP, Correo, etc.)
+            Datos de Línea
           </label>
           <textarea id="input-linea" placeholder="Pega el bloque con plan, dn, nip, correo..."></textarea>
           <div class="validation-alert" id="phone-alert-portar">⚠ El DN a portar debe tener exactamente 10 dígitos.</div>
@@ -283,7 +384,7 @@
         <div class="input-group" id="group-curp">
           <label>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-            Datos de CURP / Personales (Nombre, Fecha Nac, Estado...)
+            Datos de CURP / Personales
           </label>
           <textarea id="input-curp" placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."></textarea>
         </div>
@@ -292,7 +393,7 @@
         <div class="input-group" id="group-direccion">
           <label>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            Dirección de Facturación (Calle, CP, Colonia...)
+            Dirección de Facturación
           </label>
           <textarea id="input-direccion" placeholder="Pega la dirección de facturación..."></textarea>
         </div>
@@ -301,30 +402,40 @@
         <div class="input-group" id="group-cac">
           <label>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
-            Datos CAC (CAC, CP, FVC)
+            Datos CAC
           </label>
-          <textarea id="input-cac" placeholder="Pega CAC, C.P., FVC..."></textarea>
+          <textarea id="input-cac" class="textarea-compact" rows="3" placeholder="Pega CAC, C.P., FVC..."></textarea>
         </div>
 
-        <!-- 5. Datos EID / ID / Chat -->
+        <!-- 5. Datos de Chat / EID -->
         <div class="input-group" id="group-eid">
           <label>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/></svg>
-            ID, Chat y EID (Equipo, EID...)
+            Datos de Chat
           </label>
-          <textarea id="input-eid" placeholder="Pega EID, ID de chat, etc..."></textarea>
+          <textarea id="input-eid" class="textarea-compact" rows="3" placeholder="Línea 1: ID del chat&#10;Línea 2: +521234567890 (DN Respond)&#10;Línea 3: 12345 (EID, solo ESIM)"></textarea>
+          <div class="validation-alert" id="chat-alert-id">⚠ Falta el ID del chat (línea 1).</div>
+          <div class="validation-alert" id="chat-alert-dn">⚠ Falta el DN de Respond (línea 2, con +52).</div>
+          <div class="validation-alert" id="chat-alert-eid">⚠ El EID debe tener exactamente 5 dígitos (línea 3, solo ESIM).</div>
         </div>
       </div>
+    </div>
 
-
-      <!-- Resultado Formateado -->
-      <div class="result-container">
-        <div class="result-header">
-          <span class="result-title" id="result-title">Resultado Formateado <span id="missing-data-icon" style="color: var(--error); display: none; margin-left: 4px;" title="Faltan datos">🔴</span></span>
-          <button class="btn-copy" id="btnCopy">Copiar</button>
+    <!-- Resultado Formateado (siempre visible) -->
+    <div class="result-container">
+      <div class="result-header">
+        <div class="result-title-row">
+          <span class="result-title" id="result-title">Resultado Formateado</span>
+          <span class="missing-data-badge" id="missing-data-badge">Faltan datos</span>
+          <button type="button" class="btn-missing-info" id="btn-missing-info" title="Ver qué datos faltan">?</button>
         </div>
-        <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
+        <button class="btn-copy" id="btnCopy">Copiar</button>
       </div>
+      <div class="missing-details-panel" id="missing-details-panel">
+        <div class="missing-details-title">Datos pendientes:</div>
+        <ul id="missing-details-list"></ul>
+      </div>
+      <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
     </div>
 
     <!-- Botones de Acción para Rellenar Formulario -->

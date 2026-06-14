@@ -12,6 +12,35 @@ function cleanPhone(phoneStr) {
   return cleaned;
 }
 
+function isEsimProduct(productKey) {
+  return ['POS_ESIM', 'LN_ESIM', 'PRE_ESIM'].includes(productKey);
+}
+
+// Formatea el DN del chat conservando el prefijo +52
+function formatDnChat(phoneStr) {
+  if (!phoneStr) return '';
+  const trimmed = phoneStr.trim();
+  if (trimmed.startsWith('+52')) return trimmed;
+  const digits = trimmed.replace(/\D/g, '');
+  if (digits.startsWith('52') && digits.length >= 12) return '+' + digits;
+  if (digits.length === 10) return '+52' + digits;
+  return trimmed.startsWith('+') ? trimmed : '+52' + digits;
+}
+
+// Procesa el textarea de chat: ID, DN (+52), EID (solo ESIM, 5 dígitos)
+function parseChatField(text, productKey) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const res = { chatId: '', dnChat: '', eid: '', eidValid: true };
+  if (lines.length >= 1) res.chatId = lines[0];
+  if (lines.length >= 2) res.dnChat = formatDnChat(lines[1]);
+  if (lines.length >= 3 && isEsimProduct(productKey)) {
+    const eidDigits = lines[2].replace(/\D/g, '');
+    res.eid = eidDigits;
+    res.eidValid = /^\d{5}$/.test(eidDigits);
+  }
+  return res;
+}
+
 // Procesa de forma inteligente el textarea "Datos de Línea" sin requerir etiquetas
 function parseLineaField(text, productKey) {
   const lines = text.split('\n')
@@ -136,7 +165,7 @@ function parseDireccionField(text) {
 }
 
 // Función principal de parseo general combinando todos los campos
-function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '') {
+function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '', chatRawText = '') {
   const get = (key) => {
     const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
     return match ? match[1].trim() : '';
@@ -146,6 +175,7 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
   const lineaData = parseLineaField(lineaRawText || get('input-linea') || raw, productKey);
   const cacData = parseCacField(cacRawText || '');
   const direccionData = parseDireccionField(direccionRawText || '');
+  const chatData = parseChatField(chatRawText || '', productKey);
 
   // 2. Extraer el resto de campos desde los otros textareas (utilizando regex sobre el raw acumulado)
   const nombres = get('Nombre\\(s\\)') || get('Nombre');
@@ -166,13 +196,16 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
   const calle = direccionData.calle || get('CALLE');
   const numExt = direccionData.numExt || get('NUMERO EXTERIOR') || get('NÚMERO EXTERIOR') || get('NUM_EXT');
   const numInt = direccionData.numInt || get('NUMERO INTERIOR') || get('NÚMERO INTERIOR') || get('NUM_INT');
-  const cpDireccion = direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL') || get('C\\.P\\.');
+  const cpDireccion = direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL');
   const colonia = direccionData.colonia || get('COLONIA');
 
-  const eid = get('EID') || get('EQUIPO: EID') || get('EQUIPO') || get('EQUIPO EID');
-  const chatId = get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
+  const chatId = chatData.chatId || get('ID LEAD') || get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
+  const dnChat = chatData.dnChat || formatDnChat(get('DN CON EL QUE SE COMUNICA') || get('DN RESPOND') || '');
+  const eid = chatData.eid || get('EID') || get('EQUIPO EID') || '';
+  const eidValid = chatData.eid ? chatData.eidValid : /^\d{5}$/.test(eid);
+  const esEsim = isEsimProduct(productKey);
 
-  const cpCAC = cacData.cpCAC || get('CP') || get('C\\.P\\.') || get('Código Postal') || get('Codigo Postal');
+  const cpCAC = cacData.cpCAC || get('CP') || get('C\\.P\\.');
   const fvc = cacData.fvc || get('FVC') || get('FECHA VENTA');
   const nombreCAV = cacData.nombreCAV || get('CAC') || get('CAV') || get('Nombre CAV') || get('Nombre_CAV');
 
@@ -190,21 +223,23 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     calle,
     numExt,
     numInt,
-    cp: cpCAC || cpDireccion || get('CP'),
     cpDireccion,
+    cpCAC,
     colonia,
     curp,
     fecha,
     genero,
     lugarNacimiento,
-    equipo: eid || lineaData.equipo || '',
     chatId,
+    dnChat,
+    eid,
+    eidValid,
     fvc,
     nombreCAV,
     plan: lineaData.plan || get('PLAN') || '',
     nip: lineaData.nip || get('NIP') || '',
     nombreTitular: lineaData.nombreTitular || get('NOMBRE TITULAR') || '',
-    esEsim: !!(eid || lineaData.equipo),
+    esEsim,
     esCAC: !!nombreCAV
   };
 }

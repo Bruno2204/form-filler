@@ -34,7 +34,7 @@ ESTADO NACIM: ${d.lugarNacimiento || ''}
 CURP VERIFICADO: ${d.curp || ''}
 
 CAC: ${d.nombreCAV || ''}
-CP: ${d.cp || ''}
+CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
   LN_ESIM: (d) => `Línea Nueva ESIM
@@ -54,7 +54,7 @@ Estado de nacimiento: ${d.lugarNacimiento || ''}
 CALLE: ${d.calle || ''}
 NUMERO EXTERIOR: ${d.numExt || ''}
 NÚMERO INTERIOR (en caso de tener): ${d.numInt || ''}
-CÓDIGO POSTAL: ${d.cp || ''}
+CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
   LN_CAC: (d) => `Línea Nueva CAC
@@ -73,11 +73,11 @@ Estado de nacimiento: ${d.lugarNacimiento || ''}
 CALLE: ${d.calle || ''}
 NUMERO EXTERIOR: ${d.numExt || ''}
 NÚMERO INTERIOR (en caso de tener): ${d.numInt || ''}
-CÓDIGO POSTAL: ${d.cp || ''}
+CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}
 
 CAC: ${d.nombreCAV || ''}
-CP: ${d.cp || ''}
+CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
   PRE_ESIM: (d) => `Línea Nueva Prepago ESIM
@@ -108,7 +108,7 @@ ESTADO NACIM: ${d.lugarNacimiento || ''}
 CURP VERIFICADO: ${d.curp || ''}
 
 CAC: ${d.nombreCAV || ''}
-CP: ${d.cp || ''}
+CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
   ADIC_CAC: (d) => `Adición CAC
@@ -120,20 +120,98 @@ CORREO: ${d.email || ''}
 NOMBRE TITULAR: ${d.nombreTitular || ''}
 
 CAC: ${d.nombreCAV || ''}
-CP: ${d.cp || ''}`
+CP: ${d.cpCAC || ''}`
 };
 
 const PRODUCT_FIELDS = {
   POS_ESIM: ['linea', 'curp', 'eid'],
-  POS_CAC: ['linea', 'curp', 'cac'],
+  POS_CAC: ['linea', 'curp', 'cac', 'eid'],
   LN_ESIM: ['linea', 'curp', 'direccion', 'eid'],
-  LN_CAC: ['linea', 'curp', 'direccion', 'cac'],
+  LN_CAC: ['linea', 'curp', 'direccion', 'cac', 'eid'],
   PRE_ESIM: ['linea', 'curp', 'eid'],
-  PREPAGO: ['linea', 'curp', 'cac'],
-  ADIC_CAC: ['linea', 'cac']
+  PREPAGO: ['linea', 'curp', 'cac', 'eid'],
+  ADIC_CAC: ['linea', 'cac', 'eid']
+};
+
+const PHONE_FIELDS = ['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'];
+
+const PRODUCT_REQUIRED_FIELDS = {
+  POS_ESIM: [
+    'plan', 'dnPortar', 'nip', 'dnAdicional', 'email',
+    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
+    'chatId', 'dnChat', 'eid'
+  ],
+  POS_CAC: [
+    'plan', 'dnPortar', 'nip', 'dnAdicional', 'email',
+    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
+    'nombreCAV', 'cpCAC', 'fvc',
+    'chatId', 'dnChat', 'eid'
+  ],
+  LN_ESIM: [
+    'plan', 'email',
+    'nombres', 'apellido1', 'apellido2',
+    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
+    'calle', 'cpDireccion', 'colonia',
+    'chatId', 'dnChat', 'eid'
+  ],
+  LN_CAC: [
+    'plan', 'email',
+    'nombres', 'apellido1', 'apellido2',
+    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
+    'calle', 'cpDireccion', 'colonia',
+    'nombreCAV', 'cpCAC', 'fvc',
+    'chatId', 'dnChat', 'eid'
+  ],
+  PRE_ESIM: [
+    'email',
+    'nombres', 'apellido1', 'apellido2',
+    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
+    'chatId', 'dnChat', 'eid'
+  ],
+  PREPAGO: [
+    'dnPortar', 'nip', 'dnAdicional', 'email',
+    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
+    'nombreCAV', 'cpCAC', 'fvc',
+    'chatId', 'dnChat'
+  ],
+  ADIC_CAC: [
+    'plan', 'dnMovistar',
+    'dnContacto', 'email', 'nombreTitular',
+    'nombreCAV', 'cpCAC',
+    'chatId', 'dnChat'
+  ]
+};
+
+const FIELD_LABELS = {
+  plan: 'Plan',
+  dnPortar: 'DN a portar',
+  nip: 'NIP',
+  dnAdicional: 'DN adicional',
+  email: 'Correo',
+  nombres: 'Nombre(s)',
+  apellido1: 'Primer apellido',
+  apellido2: 'Segundo apellido',
+  genero: 'Sexo',
+  fecha: 'Fecha de nacimiento',
+  lugarNacimiento: 'Estado de nacimiento',
+  curp: 'CURP',
+  nombreCAV: 'CAC',
+  cpCAC: 'C.P. CAC',
+  fvc: 'FVC',
+  dnContacto: 'DN contacto',
+  dnMovistar: 'DN Movistar',
+  nombreTitular: 'Nombre titular',
+  calle: 'Calle',
+  cpDireccion: 'Código postal',
+  colonia: 'Colonia',
+  chatId: 'ID del chat',
+  dnChat: 'DN Respond',
+  eid: 'EID',
+  dnSame: 'DN portar y adicional (deben ser distintos)'
 };
 
 let activeProduct = 'POS_ESIM';
+let missingPanelOpen = false;
 
 // Cambia de producto y actualiza la visibilidad de los textareas
 function selectProduct(productKey) {
@@ -185,40 +263,96 @@ function processData() {
     activeProduct,
     document.getElementById('input-linea').value,
     document.getElementById('input-cac').value,
-    document.getElementById('input-direccion').value
+    document.getElementById('input-direccion').value,
+    document.getElementById('input-eid').value
   );
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
 
-  // Validaciones de teléfono específicas del producto
   validatePhones(parsed);
+  validateChat(parsed);
+  updateFormActionsState(parsed);
 
   // Renderizar la plantilla correspondiente
   const formatter = PRODUCT_TEMPLATES[activeProduct];
   const formattedResult = formatter ? formatter(parsed) : '';
 
-  // Comprobar si falta algún dato (ignorando los de facturación)
-  const facturacionLabels = ['CALLE:', 'NUMERO EXTERIOR:', 'NÚMERO INTERIOR', 'CÓDIGO POSTAL:', 'COLONIA:'];
-  let hasMissingData = false;
-  const lines = formattedResult.split('\n');
-  for (let line of lines) {
-    const trimmedLine = line.trim();
-    if (trimmedLine.endsWith(':')) {
-      const isFacturacion = facturacionLabels.some(label => trimmedLine.startsWith(label));
-      if (!isFacturacion) {
-        hasMissingData = true;
-        break;
-      }
+  document.getElementById('result-final').value = formattedResult;
+}
+
+function isFieldEmpty(value) {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function isPhoneFieldInvalid(field, value) {
+  if (!PHONE_FIELDS.includes(field)) return false;
+  if (isFieldEmpty(value)) return false;
+  return String(value).replace(/\D/g, '').length !== 10;
+}
+
+function validateRequiredData(d, productKey) {
+  const required = PRODUCT_REQUIRED_FIELDS[productKey] || [];
+  const missing = [];
+
+  required.forEach((field) => {
+    if (field === 'eid') {
+      if (!d.esEsim) return;
+      if (isFieldEmpty(d.eid) || !d.eidValid) missing.push(field);
+      return;
+    }
+    if (isFieldEmpty(d[field]) || isPhoneFieldInvalid(field, d[field])) {
+      missing.push(field);
+    }
+  });
+
+  if (required.includes('dnPortar') && required.includes('dnAdicional')) {
+    if (d.dnPortar && d.dnAdicional && d.dnPortar === d.dnAdicional) {
+      missing.push('dnSame');
     }
   }
 
-  const missingDataIcon = document.getElementById('missing-data-icon');
-  if (missingDataIcon) {
-    missingDataIcon.style.display = hasMissingData ? 'inline-block' : 'none';
+  return { valid: missing.length === 0, missing };
+}
+
+function getMissingFieldLabel(field, d) {
+  if (field === 'dnSame') return FIELD_LABELS.dnSame;
+  const label = FIELD_LABELS[field] || field;
+  if (PHONE_FIELDS.includes(field) && !isFieldEmpty(d[field]) && isPhoneFieldInvalid(field, d[field])) {
+    return `${label} (debe tener 10 dígitos)`;
+  }
+  if (field === 'eid' && !isFieldEmpty(d.eid) && !d.eidValid) {
+    return 'EID (debe tener 5 dígitos)';
+  }
+  return label;
+}
+
+function updateFormActionsState(d) {
+  const { valid, missing } = validateRequiredData(d, activeProduct);
+
+  const badge = document.getElementById('missing-data-badge');
+  const infoBtn = document.getElementById('btn-missing-info');
+  const panel = document.getElementById('missing-details-panel');
+  const list = document.getElementById('missing-details-list');
+
+  badge.classList.toggle('visible', !valid);
+  infoBtn.classList.toggle('visible', !valid);
+  infoBtn.textContent = missing.length > 0 ? String(missing.length) : '?';
+
+  if (valid) {
+    missingPanelOpen = false;
+    panel.classList.remove('visible');
+    list.innerHTML = '';
+  } else {
+    list.innerHTML = missing
+      .map((field) => `<li>${getMissingFieldLabel(field, d)}</li>`)
+      .join('');
+    panel.classList.toggle('visible', missingPanelOpen);
   }
 
-  document.getElementById('result-final').value = formattedResult;
+  ['btn1', 'btn2', 'btn3'].forEach((id) => {
+    document.getElementById(id).disabled = !valid;
+  });
 }
 
 // Retorna el nombre legible del producto para que el content script lo detecte al llenar el form
@@ -269,7 +403,29 @@ function validatePhones(d) {
   }
 }
 
+function validateChat(d) {
+  const alertChatId = document.getElementById('chat-alert-id');
+  const alertDnChat = document.getElementById('chat-alert-dn');
+  const alertEid = document.getElementById('chat-alert-eid');
+
+  alertChatId.style.display = 'none';
+  alertDnChat.style.display = 'none';
+  alertEid.style.display = 'none';
+
+  const chatText = document.getElementById('input-eid').value.trim();
+  if (!chatText) return;
+
+  if (!d.chatId) alertChatId.style.display = 'block';
+  if (!d.dnChat) alertDnChat.style.display = 'block';
+  if (d.esEsim && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
+}
+
 // Copiar resultado al portapapeles
+document.getElementById('btn-missing-info').addEventListener('click', () => {
+  missingPanelOpen = !missingPanelOpen;
+  document.getElementById('missing-details-panel').classList.toggle('visible', missingPanelOpen);
+});
+
 document.getElementById('btnCopy').addEventListener('click', () => {
   const resultText = document.getElementById('result-final');
   resultText.select();
@@ -298,6 +454,12 @@ document.getElementById('btnClear').addEventListener('click', () => {
   document.getElementById('phone-alert-contacto').style.display = 'none';
   document.getElementById('phone-alert-movistar').style.display = 'none';
   document.getElementById('phone-alert-same').style.display = 'none';
+  document.getElementById('chat-alert-id').style.display = 'none';
+  document.getElementById('chat-alert-dn').style.display = 'none';
+  document.getElementById('chat-alert-eid').style.display = 'none';
+  missingPanelOpen = false;
+  document.getElementById('missing-details-panel').classList.remove('visible');
+  updateFormActionsState({});
   document.getElementById('status').textContent = '🧹 Datos borrados.';
   setTimeout(() => {
     document.getElementById('status').textContent = '';
@@ -352,7 +514,8 @@ function getAccumulatedData() {
     activeProduct,
     document.getElementById('input-linea').value,
     document.getElementById('input-cac').value,
-    document.getElementById('input-direccion').value
+    document.getElementById('input-direccion').value,
+    document.getElementById('input-eid').value
   );
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;
@@ -362,29 +525,55 @@ function getAccumulatedData() {
 async function runFillerOnPage(pageFunctionName) {
   const data = getAccumulatedData();
   const status = document.getElementById('status');
-  if (!data) { status.textContent = '⚠ No se detectaron datos.'; return; }
+  if (!data) return;
+
+  const { valid } = validateRequiredData(data, activeProduct);
+  if (!valid) {
+    status.textContent = '⚠ Completa todos los datos requeridos antes de rellenar.';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    return;
+  }
 
   const tab = await getTab();
+  if (!tab?.id) {
+    status.textContent = '⚠ No se encontró una pestaña activa.';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    return;
+  }
 
-  // Inyectar el script con la lógica grande (content.js) si es necesario.
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ['content.js']
-  });
+  if (!tab.url?.startsWith('https://docs.google.com/forms/')) {
+    status.textContent = '⚠ Abre un Google Form en la pestaña activa.';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    return;
+  }
 
-  // Disparamos la llamada a la función window.FormFiller
-  const results = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: async (pageFuncStr, d) => {
-      return await window.FormFiller[pageFuncStr](d);
-    },
-    args: [pageFunctionName, data],
-  });
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['content.js']
+    });
 
-  const r = results?.[0]?.result;
-  status.textContent = r?.ok
-    ? `✅ ${r.filled} campo(s) rellenados en ${pageFunctionName}.`
-    : `⚠ ${r?.error ?? 'Error desconocido'}`;
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: async (pageFuncStr, d) => {
+        return await window.FormFiller[pageFuncStr](d);
+      },
+      args: [pageFunctionName, data],
+    });
+
+    const r = results?.[0]?.result;
+    if (r?.ok) {
+      status.textContent = `✅ ${r.filled} campo(s) rellenados.`;
+      setTimeout(() => { status.textContent = ''; }, 2000);
+    } else {
+      status.textContent = '⚠ No se pudieron rellenar los campos.';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    }
+  } catch (err) {
+    console.error(err);
+    status.textContent = '⚠ Sin permiso para esta página. Recarga la extensión.';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }
 }
 
 // Eventos a los botones de autocompletar
