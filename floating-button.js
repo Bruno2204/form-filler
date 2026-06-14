@@ -1,20 +1,24 @@
 (function () {
-  // Evitar inyecciones duplicadas
-  if (document.getElementById('form-filler-shadow-host')) return;
+  function init() {
+    if (document.getElementById('form-filler-shadow-host')) return;
+    if (!document.body) {
+      setTimeout(init, 50);
+      return;
+    }
 
-  // 1. Crear el Shadow Host para aislar completamente estilos
-  const shadowHost = document.createElement('div');
-  shadowHost.id = 'form-filler-shadow-host';
-  // Estilo base para el host
-  shadowHost.style.position = 'fixed';
-  shadowHost.style.zIndex = '999999';
-  shadowHost.style.bottom = '20px';
-  shadowHost.style.right = '20px';
-  shadowHost.style.width = 'auto';
-  shadowHost.style.height = 'auto';
-  document.body.appendChild(shadowHost);
+    // 1. Crear el Shadow Host para aislar completamente estilos
+    const shadowHost = document.createElement('div');
+    shadowHost.id = 'form-filler-shadow-host';
+    // Estilo base para el host
+    shadowHost.style.position = 'fixed';
+    shadowHost.style.zIndex = '999999';
+    shadowHost.style.bottom = '20px';
+    shadowHost.style.right = '20px';
+    shadowHost.style.width = 'auto';
+    shadowHost.style.height = 'auto';
+    document.body.appendChild(shadowHost);
 
-  const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
+    const shadowRoot = shadowHost.attachShadow({ mode: 'open' });
 
   // 2. Insertar estilos de la UI (CSS aislado)
   const styles = document.createElement('style');
@@ -235,4 +239,7 @@
     isDragging = false;
   }
 
+  }
+
+  init();
 })();

@@ -9,7 +9,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://docs.google.com/forms/d/e/*"],
+      "matches": ["https://docs.google.com/forms/*"],
       "js": ["floating-button.js"]
     }
   ],
