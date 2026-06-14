@@ -3,7 +3,7 @@
 
 const PRODUCT_TEMPLATES = {
   POS_ESIM: (d) => `POSPAGO ESIM
-EQUIPO: ${d.equipo || ''}
+EQUIPO: EID
 PLAN: ${d.plan || ''}
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
@@ -39,7 +39,7 @@ FVC: ${d.fvc || ''}`,
 
   LN_ESIM: (d) => `Línea Nueva ESIM
 PLAN: ${d.plan || ''}
-EQUIPO: ${d.equipo || ''}
+EQUIPO: EID
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -81,7 +81,7 @@ CP: ${d.cp || ''}
 FVC: ${d.fvc || ''}`,
 
   PRE_ESIM: (d) => `Línea Nueva Prepago ESIM
-EQUIPO: ${d.equipo || ''}
+EQUIPO: EID
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -180,7 +180,13 @@ function processData() {
   });
 
   // Llamar al parser de parser.js
-  const parsed = parseData(combinedText, activeProduct, document.getElementById('input-linea').value);
+  const parsed = parseData(
+    combinedText,
+    activeProduct,
+    document.getElementById('input-linea').value,
+    document.getElementById('input-cac').value,
+    document.getElementById('input-direccion').value
+  );
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
@@ -191,6 +197,26 @@ function processData() {
   // Renderizar la plantilla correspondiente
   const formatter = PRODUCT_TEMPLATES[activeProduct];
   const formattedResult = formatter ? formatter(parsed) : '';
+
+  // Comprobar si falta algún dato (ignorando los de facturación)
+  const facturacionLabels = ['CALLE:', 'NUMERO EXTERIOR:', 'NÚMERO INTERIOR', 'CÓDIGO POSTAL:', 'COLONIA:'];
+  let hasMissingData = false;
+  const lines = formattedResult.split('\n');
+  for (let line of lines) {
+    const trimmedLine = line.trim();
+    if (trimmedLine.endsWith(':')) {
+      const isFacturacion = facturacionLabels.some(label => trimmedLine.startsWith(label));
+      if (!isFacturacion) {
+        hasMissingData = true;
+        break;
+      }
+    }
+  }
+
+  const missingDataIcon = document.getElementById('missing-data-icon');
+  if (missingDataIcon) {
+    missingDataIcon.style.display = hasMissingData ? 'inline-block' : 'none';
+  }
 
   document.getElementById('result-final').value = formattedResult;
 }
@@ -211,36 +237,35 @@ function getCleanProductName(productKey, esEsim) {
 
 // Valida si los teléfonos del producto tienen exactamente 10 dígitos
 function validatePhones(d) {
-  const alertEl = document.getElementById('phone-alert');
-  let hasError = false;
+  const alertPortar = document.getElementById('phone-alert-portar');
+  const alertAdicional = document.getElementById('phone-alert-adicional');
+  const alertContacto = document.getElementById('phone-alert-contacto');
+  const alertMovistar = document.getElementById('phone-alert-movistar');
+  const alertSame = document.getElementById('phone-alert-same');
 
-  // Lista de teléfonos a validar según cuáles contengan datos válidos
-  const phonesToValidate = [];
-  if (PRODUCT_TEMPLATES[activeProduct].toString().includes('dnPortar') && d.dnPortar) {
-    phonesToValidate.push(d.dnPortar);
-  }
-  if (PRODUCT_TEMPLATES[activeProduct].toString().includes('dnAdicional') && d.dnAdicional) {
-    phonesToValidate.push(d.dnAdicional);
-  }
-  if (PRODUCT_TEMPLATES[activeProduct].toString().includes('dnContacto') && d.dnContacto) {
-    phonesToValidate.push(d.dnContacto);
-  }
-  if (PRODUCT_TEMPLATES[activeProduct].toString().includes('dnMovistar') && d.dnMovistar) {
-    phonesToValidate.push(d.dnMovistar);
-  }
+  // Ocultar por defecto
+  alertPortar.style.display = 'none';
+  alertAdicional.style.display = 'none';
+  alertContacto.style.display = 'none';
+  alertMovistar.style.display = 'none';
+  alertSame.style.display = 'none';
 
-  // Comprobar si alguno no mide exactamente 10
-  for (const phone of phonesToValidate) {
-    if (phone.length !== 10) {
-      hasError = true;
-      break;
-    }
-  }
+  const templateStr = PRODUCT_TEMPLATES[activeProduct].toString();
 
-  if (hasError) {
-    alertEl.style.display = 'block';
-  } else {
-    alertEl.style.display = 'none';
+  if (templateStr.includes('dnPortar') && d.dnPortar && d.dnPortar.length !== 10) {
+    alertPortar.style.display = 'block';
+  }
+  if (templateStr.includes('dnAdicional') && d.dnAdicional && d.dnAdicional.length !== 10) {
+    alertAdicional.style.display = 'block';
+  }
+  if (templateStr.includes('dnContacto') && d.dnContacto && d.dnContacto.length !== 10) {
+    alertContacto.style.display = 'block';
+  }
+  if (templateStr.includes('dnMovistar') && d.dnMovistar && d.dnMovistar.length !== 10) {
+    alertMovistar.style.display = 'block';
+  }
+  if (d.dnPortar && d.dnAdicional && d.dnPortar === d.dnAdicional) {
+    alertSame.style.display = 'block';
   }
 }
 
@@ -268,7 +293,11 @@ document.getElementById('btnClear').addEventListener('click', () => {
     localStorage.removeItem(`input_cache_${field}`);
   });
   document.getElementById('result-final').value = '';
-  document.getElementById('phone-alert').style.display = 'none';
+  document.getElementById('phone-alert-portar').style.display = 'none';
+  document.getElementById('phone-alert-adicional').style.display = 'none';
+  document.getElementById('phone-alert-contacto').style.display = 'none';
+  document.getElementById('phone-alert-movistar').style.display = 'none';
+  document.getElementById('phone-alert-same').style.display = 'none';
   document.getElementById('status').textContent = '🧹 Datos borrados.';
   setTimeout(() => {
     document.getElementById('status').textContent = '';
@@ -318,7 +347,13 @@ function getAccumulatedData() {
   allowedFields.forEach((field) => {
     combinedText += '\n' + document.getElementById(`input-${field}`).value;
   });
-  const parsed = parseData(combinedText, activeProduct, document.getElementById('input-linea').value);
+  const parsed = parseData(
+    combinedText,
+    activeProduct,
+    document.getElementById('input-linea').value,
+    document.getElementById('input-cac').value,
+    document.getElementById('input-direccion').value
+  );
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;
 }
@@ -356,4 +391,3 @@ async function runFillerOnPage(pageFunctionName) {
 document.getElementById('btn1').addEventListener('click', () => runFillerOnPage('fillPage1'));
 document.getElementById('btn2').addEventListener('click', () => runFillerOnPage('fillPage2'));
 document.getElementById('btn3').addEventListener('click', () => runFillerOnPage('fillPage3'));
-document.getElementById('btnBackend').addEventListener('click', () => runFillerOnPage('selectUsuarioBackend'));

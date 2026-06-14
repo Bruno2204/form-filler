@@ -37,19 +37,21 @@
         width: 100%;
         min-width: 380px;
         max-width: 420px;
-        padding: 16px;
-        overflow-x: hidden;
+        height: 600px;
+        padding: 12px 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
-      /* --- Encabezado / Selector de Producto --- */
-      .header-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+      .scrollable-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 4px;
+        margin-bottom: 12px;
       }
+
+
 
       .products-grid {
         display: grid;
@@ -236,16 +238,7 @@
       #btnClear { background: #757575; }
       #btnClear:hover { background: #616161; }
 
-      .btn-full {
-        width: 100%;
-        background: #fbbc05;
-        color: #202124;
-        margin-top: 6px;
-        font-weight: 600;
-      }
-      .btn-full:hover {
-        background: #f3ad03;
-      }
+
 
       #status {
         margin-top: 8px;
@@ -260,7 +253,6 @@
 
   <body>
     <!-- Selector de Productos -->
-    <div class="header-title">Seleccionar Producto</div>
     <div class="products-grid">
       <button class="btn-product active" data-product="POS_ESIM">POS ESIM</button>
       <button class="btn-product" data-product="POS_CAC">POS CAC</button>
@@ -271,64 +263,68 @@
       <button class="btn-product" data-product="ADIC_CAC">ADIC CAC</button>
     </div>
 
-    <!-- Contenedor Dinámico de Entradas -->
-    <div class="inputs-container">
-      <!-- 1. Datos de Línea -->
-      <div class="input-group" id="group-linea">
-        <label>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
-          Datos de Línea (Plan, DN, NIP, Correo, etc.)
-        </label>
-        <textarea id="input-linea" placeholder="Pega el bloque con plan, dn, nip, correo..."></textarea>
+    <div class="scrollable-content">
+      <!-- Contenedor Dinámico de Entradas -->
+      <div class="inputs-container">
+        <div class="input-group" id="group-linea">
+          <label>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+            Datos de Línea (Plan, DN, NIP, Correo, etc.)
+          </label>
+          <textarea id="input-linea" placeholder="Pega el bloque con plan, dn, nip, correo..."></textarea>
+          <div class="validation-alert" id="phone-alert-portar">⚠ El DN a portar debe tener exactamente 10 dígitos.</div>
+          <div class="validation-alert" id="phone-alert-adicional">⚠ El DN adicional debe tener exactamente 10 dígitos.</div>
+          <div class="validation-alert" id="phone-alert-contacto">⚠ El DN de contacto debe tener exactamente 10 dígitos.</div>
+          <div class="validation-alert" id="phone-alert-movistar">⚠ El DN Movistar debe tener exactamente 10 dígitos.</div>
+          <div class="validation-alert" id="phone-alert-same">⚠ El DN a portar y el DN adicional deben ser diferentes.</div>
+        </div>
+
+        <!-- 2. Datos de CURP / Personales -->
+        <div class="input-group" id="group-curp">
+          <label>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+            Datos de CURP / Personales (Nombre, Fecha Nac, Estado...)
+          </label>
+          <textarea id="input-curp" placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."></textarea>
+        </div>
+
+        <!-- 3. Datos de Dirección -->
+        <div class="input-group" id="group-direccion">
+          <label>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            Dirección de Facturación (Calle, CP, Colonia...)
+          </label>
+          <textarea id="input-direccion" placeholder="Pega la dirección de facturación..."></textarea>
+        </div>
+
+        <!-- 4. Datos CAC -->
+        <div class="input-group" id="group-cac">
+          <label>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
+            Datos CAC (CAC, CP, FVC)
+          </label>
+          <textarea id="input-cac" placeholder="Pega CAC, C.P., FVC..."></textarea>
+        </div>
+
+        <!-- 5. Datos EID / ID / Chat -->
+        <div class="input-group" id="group-eid">
+          <label>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/></svg>
+            ID, Chat y EID (Equipo, EID...)
+          </label>
+          <textarea id="input-eid" placeholder="Pega EID, ID de chat, etc..."></textarea>
+        </div>
       </div>
 
-      <!-- 2. Datos de CURP / Personales -->
-      <div class="input-group" id="group-curp">
-        <label>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-          Datos de CURP / Personales (Nombre, Fecha Nac, Estado...)
-        </label>
-        <textarea id="input-curp" placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."></textarea>
-      </div>
 
-      <!-- 3. Datos de Dirección -->
-      <div class="input-group" id="group-direccion">
-        <label>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          Dirección de Facturación (Calle, CP, Colonia...)
-        </label>
-        <textarea id="input-direccion" placeholder="Pega la dirección de facturación..."></textarea>
+      <!-- Resultado Formateado -->
+      <div class="result-container">
+        <div class="result-header">
+          <span class="result-title" id="result-title">Resultado Formateado <span id="missing-data-icon" style="color: var(--error); display: none; margin-left: 4px;" title="Faltan datos">🔴</span></span>
+          <button class="btn-copy" id="btnCopy">Copiar</button>
+        </div>
+        <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
       </div>
-
-      <!-- 4. Datos CAC -->
-      <div class="input-group" id="group-cac">
-        <label>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
-          Datos CAC (CAC, CP, FVC)
-        </label>
-        <textarea id="input-cac" placeholder="Pega CAC, C.P., FVC..."></textarea>
-      </div>
-
-      <!-- 5. Datos EID / ID / Chat -->
-      <div class="input-group" id="group-eid">
-        <label>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/></svg>
-          ID, Chat y EID (Equipo, EID...)
-        </label>
-        <textarea id="input-eid" placeholder="Pega EID, ID de chat, etc..."></textarea>
-      </div>
-    </div>
-
-    <!-- Alerta de Validación de Teléfono -->
-    <div class="validation-alert" id="phone-alert">⚠ El número telefónico debe tener exactamente 10 dígitos.</div>
-
-    <!-- Resultado Formateado -->
-    <div class="result-container">
-      <div class="result-header">
-        <span class="result-title">Resultado Formateado</span>
-        <button class="btn-copy" id="btnCopy">Copiar</button>
-      </div>
-      <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
     </div>
 
     <!-- Botones de Acción para Rellenar Formulario -->
@@ -340,7 +336,6 @@
         <button class="btn-action" id="btn3">Pág 3</button>
         <button class="btn-action" id="btnClear">Limpiar</button>
       </div>
-      <button class="btn-action btn-full" id="btnBackend">Usuario Backend</button>
     </div>
 
     <div id="status"></div>

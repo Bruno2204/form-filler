@@ -89,8 +89,54 @@ function parseLineaField(text, productKey) {
   return res;
 }
 
+// Procesa el textarea "Datos CAC" sin etiquetas
+function parseCacField(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  let res = { nombreCAV: '', cpCAC: '', fvc: '' };
+  if (lines.length >= 1) res.nombreCAV = lines[0];
+  if (lines.length >= 2) res.cpCAC = lines[1];
+  if (lines.length >= 3) {
+    let date = lines[2];
+    if (/^\d{1,2}\/\d{1,2}$/.test(date)) {
+      date += '/2026';
+    }
+    res.fvc = date;
+  }
+  return res;
+}
+
+// Procesa el textarea "Datos de Dirección" sin etiquetas
+function parseDireccionField(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  let res = { calle: '', numExt: '', numInt: '', cpDireccion: '', colonia: '' };
+  if (lines.length === 0) return res;
+  if (lines.length === 1) {
+    res.calle = lines[0];
+    return res;
+  }
+  if (lines.length === 2) {
+    res.calle = lines[0];
+    res.colonia = lines[1];
+    return res;
+  }
+  if (lines.length === 3) {
+    res.calle = lines[0];
+    res.cpDireccion = lines[1];
+    res.colonia = lines[2];
+    return res;
+  }
+  res.calle = lines[0];
+  res.colonia = lines[lines.length - 1];
+  res.cpDireccion = lines[lines.length - 2];
+  
+  const middle = lines.slice(1, lines.length - 2);
+  if (middle.length >= 1) res.numExt = middle[0];
+  if (middle.length >= 2) res.numInt = middle.slice(1).join(' ');
+  return res;
+}
+
 // Función principal de parseo general combinando todos los campos
-function parseData(raw, productKey, lineaRawText = '') {
+function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '') {
   const get = (key) => {
     const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
     return match ? match[1].trim() : '';
@@ -98,6 +144,8 @@ function parseData(raw, productKey, lineaRawText = '') {
 
   // 1. Obtener la extracción heurística de la sección de línea
   const lineaData = parseLineaField(lineaRawText || get('input-linea') || raw, productKey);
+  const cacData = parseCacField(cacRawText || '');
+  const direccionData = parseDireccionField(direccionRawText || '');
 
   // 2. Extraer el resto de campos desde los otros textareas (utilizando regex sobre el raw acumulado)
   const nombres = get('Nombre\\(s\\)') || get('Nombre');
@@ -115,18 +163,18 @@ function parseData(raw, productKey, lineaRawText = '') {
   const genero = get('Sexo') || get('SEXO') || get('Género') || get('Genero');
   const lugarNacimiento = get('Entidad de nacimiento') || get('Estado de nacimiento') || get('ESTADO NACIM') || get('ESTADO_NACIMIENTO');
 
-  const calle = get('CALLE');
-  const numExt = get('NUMERO EXTERIOR') || get('NÚMERO EXTERIOR') || get('NUM_EXT');
-  const numInt = get('NUMERO INTERIOR') || get('NÚMERO INTERIOR') || get('NUM_INT');
-  const cpDireccion = get('CODIGO POSTAL') || get('CÓDIGO POSTAL') || get('C\\.P\\.');
-  const colonia = get('COLONIA');
+  const calle = direccionData.calle || get('CALLE');
+  const numExt = direccionData.numExt || get('NUMERO EXTERIOR') || get('NÚMERO EXTERIOR') || get('NUM_EXT');
+  const numInt = direccionData.numInt || get('NUMERO INTERIOR') || get('NÚMERO INTERIOR') || get('NUM_INT');
+  const cpDireccion = direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL') || get('C\\.P\\.');
+  const colonia = direccionData.colonia || get('COLONIA');
 
   const eid = get('EID') || get('EQUIPO: EID') || get('EQUIPO') || get('EQUIPO EID');
   const chatId = get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
 
-  const cpCAC = get('CP') || get('C\\.P\\.') || get('Código Postal') || get('Codigo Postal');
-  const fvc = get('FVC') || get('FECHA VENTA');
-  const nombreCAV = get('CAC') || get('CAV') || get('Nombre CAV') || get('Nombre_CAV');
+  const cpCAC = cacData.cpCAC || get('CP') || get('C\\.P\\.') || get('Código Postal') || get('Codigo Postal');
+  const fvc = cacData.fvc || get('FVC') || get('FECHA VENTA');
+  const nombreCAV = cacData.nombreCAV || get('CAC') || get('CAV') || get('Nombre CAV') || get('Nombre_CAV');
 
   return {
     nombres: nombres || lineaData.nombres || '',
