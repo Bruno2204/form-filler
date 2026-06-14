@@ -180,7 +180,7 @@ function processData() {
   });
 
   // Llamar al parser de parser.js
-  const parsed = parseData(combinedText);
+  const parsed = parseData(combinedText, activeProduct, document.getElementById('input-linea').value);
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
@@ -318,7 +318,7 @@ function getAccumulatedData() {
   allowedFields.forEach((field) => {
     combinedText += '\n' + document.getElementById(`input-${field}`).value;
   });
-  const parsed = parseData(combinedText);
+  const parsed = parseData(combinedText, activeProduct, document.getElementById('input-linea').value);
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;
 }
