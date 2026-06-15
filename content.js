@@ -204,11 +204,20 @@ window.FormFiller = {
       }
 
       // ── Resto de Textos ──
+      const isLineaNueva =
+        data.producto === 'Linea Nueva' ||
+        data.producto === 'Linea Nueva Plan Anual' ||
+        data.producto === 'Linea Nueva Esim' ||
+        data.producto === 'Línea Nueva Prepago Esim' ||
+        data.producto?.toLowerCase().includes('linea nueva') ||
+        data.producto?.toLowerCase().includes('línea nueva');
+
       if (setInput(findInputByLabel('Nombre del cliente'), data.nombreCompleto))
         filled++;
       if (setInput(findInputByLabel('Fecha de nacimiento'), data.fecha))
         filled++;
-      if (setInput(findInputByLabel('CURP'), data.curp)) filled++;
+      if (!isLineaNueva && setInput(findInputByLabel('CURP'), data.curp))
+        filled++;
       if (setInput(findInputByLabel('DN de contacto'), data.dn)) filled++;
       if (setInput(findInputByLabel('E-mail'), data.email)) filled++;
       if (setInput(findInputByLabel('id lead'), data.chatId)) filled++;
@@ -452,14 +461,19 @@ window.FormFiller = {
       }
 
       // Dropdown de "Plan elegido"
-      if (data.plan) {
+      const isPrepago =
+        data.producto === 'Porta Prepago' ||
+        data.producto === 'Línea Nueva Prepago Esim';
+      const planElegido = isPrepago ? 'Prepago' : data.plan;
+
+      if (planElegido) {
         for (const item of document.querySelectorAll('div[jsmodel="CP1oW"]')) {
           const heading = item.querySelector('.M7eMe');
           if (heading?.innerText?.toLowerCase().includes('plan elegido')) {
             console.log(
-              `Detectado dropdown Plan Elegido, buscando: ${data.plan}`,
+              `Detectado dropdown Plan Elegido, buscando: ${planElegido}`,
             );
-            const success = await selectDropdownOption(item, data.plan);
+            const success = await selectDropdownOption(item, planElegido);
             if (success) filled++;
             break;
           }
