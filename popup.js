@@ -120,66 +120,140 @@ CORREO: ${d.email || ''}
 NOMBRE TITULAR: ${d.nombreTitular || ''}
 
 CAC: ${d.nombreCAV || ''}
-CP: ${d.cpCAC || ''}`
+CP: ${d.cpCAC || ''}`,
 };
 
 const PRODUCT_FIELDS = {
-  POS_ESIM: ['linea', 'curp', 'eid'],
-  POS_CAC: ['linea', 'curp', 'cac', 'eid'],
-  LN_ESIM: ['linea', 'curp', 'direccion', 'eid'],
-  LN_CAC: ['linea', 'curp', 'direccion', 'cac', 'eid'],
-  PRE_ESIM: ['linea', 'curp', 'eid'],
-  PREPAGO: ['linea', 'curp', 'cac', 'eid'],
-  ADIC_CAC: ['linea', 'cac', 'eid']
+  POS_ESIM: ['plan', 'linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
+  POS_CAC: ['plan', 'linea', 'curp', 'cac', 'chat-id', 'chat-dn'],
+  LN_ESIM: ['plan', 'linea', 'curp', 'direccion', 'chat-id', 'chat-dn', 'eid'],
+  LN_CAC: ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn'],
+  PRE_ESIM: ['linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
+  PREPAGO: ['linea', 'curp', 'cac', 'chat-id', 'chat-dn'],
+  ADIC_CAC: ['plan', 'linea', 'cac', 'chat-id', 'chat-dn'],
 };
+
+const ALL_INPUT_FIELDS = ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn', 'eid'];
 
 const PHONE_FIELDS = ['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'];
 
 const PRODUCT_REQUIRED_FIELDS = {
   POS_ESIM: [
-    'plan', 'dnPortar', 'nip', 'dnAdicional', 'email',
-    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
-    'chatId', 'dnChat', 'eid'
+    'plan',
+    'dnPortar',
+    'nip',
+    'dnAdicional',
+    'email',
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'genero',
+    'fecha',
+    'lugarNacimiento',
+    'curp',
+    'chatId',
+    'dnChat',
+    'eid',
   ],
   POS_CAC: [
-    'plan', 'dnPortar', 'nip', 'dnAdicional', 'email',
-    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
-    'nombreCAV', 'cpCAC', 'fvc',
-    'chatId', 'dnChat', 'eid'
+    'plan',
+    'dnPortar',
+    'nip',
+    'dnAdicional',
+    'email',
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'genero',
+    'fecha',
+    'lugarNacimiento',
+    'curp',
+    'nombreCAV',
+    'cpCAC',
+    'fvc',
+    'chatId',
+    'dnChat',
+    'eid',
   ],
   LN_ESIM: [
-    'plan', 'email',
-    'nombres', 'apellido1', 'apellido2',
-    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
-    'calle', 'cpDireccion', 'colonia',
-    'chatId', 'dnChat', 'eid'
+    'plan',
+    'email',
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'dnContacto',
+    'fecha',
+    'genero',
+    'lugarNacimiento',
+    'calle',
+    'cpDireccion',
+    'colonia',
+    'chatId',
+    'dnChat',
+    'eid',
   ],
   LN_CAC: [
-    'plan', 'email',
-    'nombres', 'apellido1', 'apellido2',
-    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
-    'calle', 'cpDireccion', 'colonia',
-    'nombreCAV', 'cpCAC', 'fvc',
-    'chatId', 'dnChat', 'eid'
+    'plan',
+    'email',
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'dnContacto',
+    'fecha',
+    'genero',
+    'lugarNacimiento',
+    'calle',
+    'cpDireccion',
+    'colonia',
+    'nombreCAV',
+    'cpCAC',
+    'fvc',
+    'chatId',
+    'dnChat',
+    'eid',
   ],
   PRE_ESIM: [
     'email',
-    'nombres', 'apellido1', 'apellido2',
-    'dnContacto', 'fecha', 'genero', 'lugarNacimiento',
-    'chatId', 'dnChat', 'eid'
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'dnContacto',
+    'fecha',
+    'genero',
+    'lugarNacimiento',
+    'chatId',
+    'dnChat',
+    'eid',
   ],
   PREPAGO: [
-    'dnPortar', 'nip', 'dnAdicional', 'email',
-    'nombres', 'apellido1', 'apellido2', 'genero', 'fecha', 'lugarNacimiento', 'curp',
-    'nombreCAV', 'cpCAC', 'fvc',
-    'chatId', 'dnChat'
+    'dnPortar',
+    'nip',
+    'dnAdicional',
+    'email',
+    'nombres',
+    'apellido1',
+    'apellido2',
+    'genero',
+    'fecha',
+    'lugarNacimiento',
+    'curp',
+    'nombreCAV',
+    'cpCAC',
+    'fvc',
+    'chatId',
+    'dnChat',
   ],
   ADIC_CAC: [
-    'plan', 'dnMovistar',
-    'dnContacto', 'email', 'nombreTitular',
-    'nombreCAV', 'cpCAC',
-    'chatId', 'dnChat'
-  ]
+    'plan',
+    'dnMovistar',
+    'dnContacto',
+    'email',
+    'nombreTitular',
+    'nombreCAV',
+    'cpCAC',
+    'chatId',
+    'dnChat',
+  ],
 };
 
 const FIELD_LABELS = {
@@ -207,8 +281,27 @@ const FIELD_LABELS = {
   chatId: 'ID del chat',
   dnChat: 'DN Respond',
   eid: 'EID',
-  dnSame: 'DN portar y adicional (deben ser distintos)'
+  dnSame: 'DN portar y adicional (deben ser distintos)',
 };
+
+// Pega del portapapeles en el input; si ya tiene contenido, añade en nueva línea
+async function pasteIntoInput(inputEl) {
+  inputEl.focus();
+  try {
+    const text = await navigator.clipboard.readText();
+    const current = inputEl.value.trim();
+    inputEl.value = current ? current + '\n' + text.trim() : text.trim();
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    // Feedback visual breve
+    inputEl.style.backgroundColor = '#e6f4ea';
+    setTimeout(() => { inputEl.style.backgroundColor = ''; }, 500);
+  } catch (err) {
+    console.error('Clipboard read failed:', err);
+    const status = document.getElementById('status');
+    status.textContent = '⚠ No se pudo leer el portapapeles.';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  }
+}
 
 let activeProduct = 'POS_ESIM';
 let missingPanelOpen = false;
@@ -229,10 +322,10 @@ function selectProduct(productKey) {
 
   // Mostrar/ocultar textareas correspondientes
   const allowedFields = PRODUCT_FIELDS[productKey] || [];
-  const allGroups = ['linea', 'curp', 'direccion', 'cac', 'eid'];
 
-  allGroups.forEach((field) => {
+  ALL_INPUT_FIELDS.forEach((field) => {
     const groupEl = document.getElementById(`group-${field}`);
+    if (!groupEl) return;
     if (allowedFields.includes(field)) {
       groupEl.classList.remove('hidden');
     } else {
@@ -261,10 +354,15 @@ function processData() {
   const parsed = parseData(
     combinedText,
     activeProduct,
-    document.getElementById('input-linea').value,
-    document.getElementById('input-cac').value,
-    document.getElementById('input-direccion').value,
-    document.getElementById('input-eid').value
+    document.getElementById('input-linea') ? document.getElementById('input-linea').value : '',
+    document.getElementById('input-cac') ? document.getElementById('input-cac').value : '',
+    document.getElementById('input-direccion') ? document.getElementById('input-direccion').value : '',
+    {
+      plan: document.getElementById('input-plan') ? document.getElementById('input-plan').value : '',
+      chatId: document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value : '',
+      dnChat: document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value : '',
+      eid: document.getElementById('input-eid') ? document.getElementById('input-eid').value : ''
+    }
   );
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
@@ -318,7 +416,11 @@ function validateRequiredData(d, productKey) {
 function getMissingFieldLabel(field, d) {
   if (field === 'dnSame') return FIELD_LABELS.dnSame;
   const label = FIELD_LABELS[field] || field;
-  if (PHONE_FIELDS.includes(field) && !isFieldEmpty(d[field]) && isPhoneFieldInvalid(field, d[field])) {
+  if (
+    PHONE_FIELDS.includes(field) &&
+    !isFieldEmpty(d[field]) &&
+    isPhoneFieldInvalid(field, d[field])
+  ) {
     return `${label} (debe tener 10 dígitos)`;
   }
   if (field === 'eid' && !isFieldEmpty(d.eid) && !d.eidValid) {
@@ -358,14 +460,22 @@ function updateFormActionsState(d) {
 // Retorna el nombre legible del producto para que el content script lo detecte al llenar el form
 function getCleanProductName(productKey, esEsim) {
   switch (productKey) {
-    case 'ADIC_CAC': return 'Adición';
-    case 'PRE_ESIM': return 'Línea Nueva Prepago Esim';
-    case 'PREPAGO': return 'Porta Prepago';
-    case 'POS_ESIM': return 'Porta Pospago Esim';
-    case 'POS_CAC': return 'Porta Pospago';
-    case 'LN_ESIM': return 'Linea Nueva Esim';
-    case 'LN_CAC': return 'Linea Nueva';
-    default: return 'Porta Pospago';
+    case 'ADIC_CAC':
+      return 'Adición';
+    case 'PRE_ESIM':
+      return 'Línea Nueva Prepago Esim';
+    case 'PREPAGO':
+      return 'Porta Prepago';
+    case 'POS_ESIM':
+      return 'Porta Pospago Esim';
+    case 'POS_CAC':
+      return 'Porta Pospago';
+    case 'LN_ESIM':
+      return 'Linea Nueva Esim';
+    case 'LN_CAC':
+      return 'Linea Nueva';
+    default:
+      return 'Porta Pospago';
   }
 }
 
@@ -386,16 +496,32 @@ function validatePhones(d) {
 
   const templateStr = PRODUCT_TEMPLATES[activeProduct].toString();
 
-  if (templateStr.includes('dnPortar') && d.dnPortar && d.dnPortar.length !== 10) {
+  if (
+    templateStr.includes('dnPortar') &&
+    d.dnPortar &&
+    d.dnPortar.length !== 10
+  ) {
     alertPortar.style.display = 'block';
   }
-  if (templateStr.includes('dnAdicional') && d.dnAdicional && d.dnAdicional.length !== 10) {
+  if (
+    templateStr.includes('dnAdicional') &&
+    d.dnAdicional &&
+    d.dnAdicional.length !== 10
+  ) {
     alertAdicional.style.display = 'block';
   }
-  if (templateStr.includes('dnContacto') && d.dnContacto && d.dnContacto.length !== 10) {
+  if (
+    templateStr.includes('dnContacto') &&
+    d.dnContacto &&
+    d.dnContacto.length !== 10
+  ) {
     alertContacto.style.display = 'block';
   }
-  if (templateStr.includes('dnMovistar') && d.dnMovistar && d.dnMovistar.length !== 10) {
+  if (
+    templateStr.includes('dnMovistar') &&
+    d.dnMovistar &&
+    d.dnMovistar.length !== 10
+  ) {
     alertMovistar.style.display = 'block';
   }
   if (d.dnPortar && d.dnAdicional && d.dnPortar === d.dnAdicional) {
@@ -412,18 +538,23 @@ function validateChat(d) {
   alertDnChat.style.display = 'none';
   alertEid.style.display = 'none';
 
-  const chatText = document.getElementById('input-eid').value.trim();
-  if (!chatText) return;
+  const chatIdVal = document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value.trim() : '';
+  const chatDnVal = document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value.trim() : '';
+  const eidVal = document.getElementById('input-eid') ? document.getElementById('input-eid').value.trim() : '';
 
-  if (!d.chatId) alertChatId.style.display = 'block';
-  if (!d.dnChat) alertDnChat.style.display = 'block';
-  if (d.esEsim && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
+  if (!chatIdVal && !chatDnVal && !eidVal) return;
+
+  if ((chatIdVal || chatDnVal) && !chatIdVal) alertChatId.style.display = 'block';
+  if ((chatIdVal || chatDnVal) && !chatDnVal) alertDnChat.style.display = 'block';
+  if (d.esEsim && eidVal && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
 }
 
 // Copiar resultado al portapapeles
 document.getElementById('btn-missing-info').addEventListener('click', () => {
   missingPanelOpen = !missingPanelOpen;
-  document.getElementById('missing-details-panel').classList.toggle('visible', missingPanelOpen);
+  document
+    .getElementById('missing-details-panel')
+    .classList.toggle('visible', missingPanelOpen);
 });
 
 document.getElementById('btnCopy').addEventListener('click', () => {
@@ -434,7 +565,7 @@ document.getElementById('btnCopy').addEventListener('click', () => {
   const copyBtn = document.getElementById('btnCopy');
   copyBtn.textContent = '¡Copiado!';
   copyBtn.style.background = '#0f9d58';
-  
+
   setTimeout(() => {
     copyBtn.textContent = 'Copiar';
     copyBtn.style.background = 'var(--success)';
@@ -443,9 +574,9 @@ document.getElementById('btnCopy').addEventListener('click', () => {
 
 // Limpiar todas las entradas y cache
 document.getElementById('btnClear').addEventListener('click', () => {
-  const allGroups = ['linea', 'curp', 'direccion', 'cac', 'eid'];
-  allGroups.forEach((field) => {
-    document.getElementById(`input-${field}`).value = '';
+  ALL_INPUT_FIELDS.forEach((field) => {
+    const el = document.getElementById(`input-${field}`);
+    if (el) el.value = '';
     localStorage.removeItem(`input_cache_${field}`);
   });
   document.getElementById('result-final').value = '';
@@ -468,22 +599,42 @@ document.getElementById('btnClear').addEventListener('click', () => {
 
 // Cargar estado inicial
 document.addEventListener('DOMContentLoaded', () => {
-  // Cargar textareas desde localStorage
-  const allGroups = ['linea', 'curp', 'direccion', 'cac', 'eid'];
-  allGroups.forEach((field) => {
+  // Cargar campos desde localStorage
+  ALL_INPUT_FIELDS.forEach((field) => {
+    const el = document.getElementById(`input-${field}`);
+    if (!el) return;
     const saved = localStorage.getItem(`input_cache_${field}`);
-    if (saved) {
-      document.getElementById(`input-${field}`).value = saved;
-    }
+    if (saved) el.value = saved;
   });
 
   // Restaurar producto activo
   const savedProduct = localStorage.getItem('active_product') || 'POS_ESIM';
   selectProduct(savedProduct);
 
-  // Escuchar eventos input en cada textarea
-  allGroups.forEach((field) => {
-    document.getElementById(`input-${field}`).addEventListener('input', processData);
+  // Escuchar eventos input y doble clic en cada campo
+  let lastClickEl = null;
+  let lastClickTime = 0;
+
+  ALL_INPUT_FIELDS.forEach((field) => {
+    const el = document.getElementById(`input-${field}`);
+    if (!el) return;
+
+    el.addEventListener('input', processData);
+
+    // Doble clic → pegar del portapapeles (nueva línea si ya hay contenido)
+    // Usamos mousedown para evitar interferencia con la selección nativa de dblclick
+    el.addEventListener('mousedown', (e) => {
+      const now = Date.now();
+      if (lastClickEl === el && now - lastClickTime < 300) {
+        e.preventDefault(); // evita selección de texto
+        pasteIntoInput(el);
+        lastClickEl = null;
+        lastClickTime = 0;
+      } else {
+        lastClickEl = el;
+        lastClickTime = now;
+      }
+    });
   });
 });
 
@@ -512,10 +663,15 @@ function getAccumulatedData() {
   const parsed = parseData(
     combinedText,
     activeProduct,
-    document.getElementById('input-linea').value,
-    document.getElementById('input-cac').value,
-    document.getElementById('input-direccion').value,
-    document.getElementById('input-eid').value
+    document.getElementById('input-linea') ? document.getElementById('input-linea').value : '',
+    document.getElementById('input-cac') ? document.getElementById('input-cac').value : '',
+    document.getElementById('input-direccion') ? document.getElementById('input-direccion').value : '',
+    {
+      plan: document.getElementById('input-plan') ? document.getElementById('input-plan').value : '',
+      chatId: document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value : '',
+      dnChat: document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value : '',
+      eid: document.getElementById('input-eid') ? document.getElementById('input-eid').value : ''
+    }
   );
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;
@@ -529,28 +685,35 @@ async function runFillerOnPage(pageFunctionName) {
 
   const { valid } = validateRequiredData(data, activeProduct);
   if (!valid) {
-    status.textContent = '⚠ Completa todos los datos requeridos antes de rellenar.';
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    status.textContent =
+      '⚠ Completa todos los datos requeridos antes de rellenar.';
+    setTimeout(() => {
+      status.textContent = '';
+    }, 3000);
     return;
   }
 
   const tab = await getTab();
   if (!tab?.id) {
     status.textContent = '⚠ No se encontró una pestaña activa.';
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    setTimeout(() => {
+      status.textContent = '';
+    }, 3000);
     return;
   }
 
   if (!tab.url?.startsWith('https://docs.google.com/forms/')) {
     status.textContent = '⚠ Abre un Google Form en la pestaña activa.';
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    setTimeout(() => {
+      status.textContent = '';
+    }, 3000);
     return;
   }
 
   try {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['content.js']
+      files: ['content.js'],
     });
 
     const results = await chrome.scripting.executeScript({
@@ -564,19 +727,32 @@ async function runFillerOnPage(pageFunctionName) {
     const r = results?.[0]?.result;
     if (r?.ok) {
       status.textContent = `✅ ${r.filled} campo(s) rellenados.`;
-      setTimeout(() => { status.textContent = ''; }, 2000);
+      setTimeout(() => {
+        status.textContent = '';
+      }, 2000);
     } else {
       status.textContent = '⚠ No se pudieron rellenar los campos.';
-      setTimeout(() => { status.textContent = ''; }, 3000);
+      setTimeout(() => {
+        status.textContent = '';
+      }, 3000);
     }
   } catch (err) {
     console.error(err);
-    status.textContent = '⚠ Sin permiso para esta página. Recarga la extensión.';
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    status.textContent =
+      '⚠ Sin permiso para esta página. Recarga la extensión.';
+    setTimeout(() => {
+      status.textContent = '';
+    }, 3000);
   }
 }
 
 // Eventos a los botones de autocompletar
-document.getElementById('btn1').addEventListener('click', () => runFillerOnPage('fillPage1'));
-document.getElementById('btn2').addEventListener('click', () => runFillerOnPage('fillPage2'));
-document.getElementById('btn3').addEventListener('click', () => runFillerOnPage('fillPage3'));
+document
+  .getElementById('btn1')
+  .addEventListener('click', () => runFillerOnPage('fillPage1'));
+document
+  .getElementById('btn2')
+  .addEventListener('click', () => runFillerOnPage('fillPage2'));
+document
+  .getElementById('btn3')
+  .addEventListener('click', () => runFillerOnPage('fillPage3'));

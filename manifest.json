@@ -3,7 +3,7 @@
   "name": "Form Filler",
   "version": "1.0",
   "description": "Rellena formularios Google",
-  "permissions": ["activeTab", "scripting", "sidePanel"],
+  "permissions": ["activeTab", "scripting", "sidePanel", "clipboardRead"],
   "host_permissions": ["https://docs.google.com/forms/*"],
   "action": {},
   "side_panel": {
@@ -11,17 +11,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["https://docs.google.com/forms/*"],
-      "js": ["floating-button.js"]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.html", "parser.js", "popup.js"],
-      "matches": ["*://docs.google.com/*"]
-    }
-  ]
+  }
 }

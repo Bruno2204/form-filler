@@ -89,12 +89,6 @@ function parseLineaField(text, productKey) {
     nombreTitular: ''
   };
 
-  // Determinar Plan: es el primer texto descriptivo para productos pospago/adición
-  const needsPlan = !['PREPAGO', 'PRE_ESIM'].includes(productKey);
-  if (needsPlan && otherTexts.length > 0) {
-    res.plan = otherTexts.shift();
-  }
-
   // Nombre del titular para Adición (si queda texto libre)
   if (productKey === 'ADIC_CAC' && otherTexts.length > 0) {
     res.nombreTitular = otherTexts.join(' ');
@@ -165,7 +159,13 @@ function parseDireccionField(text) {
 }
 
 // Función principal de parseo general combinando todos los campos
-function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '', chatRawText = '') {
+function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '', fieldOverrides = {}) {
+  const {
+    plan: planOverride = '',
+    chatId: chatIdOverride = '',
+    dnChat: dnChatOverride = '',
+    eid: eidOverride = ''
+  } = fieldOverrides;
   const get = (key) => {
     const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
     return match ? match[1].trim() : '';
@@ -175,7 +175,7 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
   const lineaData = parseLineaField(lineaRawText || get('input-linea') || raw, productKey);
   const cacData = parseCacField(cacRawText || '');
   const direccionData = parseDireccionField(direccionRawText || '');
-  const chatData = parseChatField(chatRawText || '', productKey);
+  const chatData = parseChatField('', productKey);
 
   // 2. Extraer el resto de campos desde los otros textareas (utilizando regex sobre el raw acumulado)
   const nombres = get('Nombre\\(s\\)') || get('Nombre');
@@ -199,10 +199,14 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
   const cpDireccion = direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL');
   const colonia = direccionData.colonia || get('COLONIA');
 
-  const chatId = chatData.chatId || get('ID LEAD') || get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
-  const dnChat = chatData.dnChat || formatDnChat(get('DN CON EL QUE SE COMUNICA') || get('DN RESPOND') || '');
-  const eid = chatData.eid || get('EID') || get('EQUIPO EID') || '';
-  const eidValid = chatData.eid ? chatData.eidValid : /^\d{5}$/.test(eid);
+  const chatId = chatIdOverride.trim() || chatData.chatId || get('ID LEAD') || get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
+  const dnChat = dnChatOverride.trim()
+    ? formatDnChat(dnChatOverride)
+    : (chatData.dnChat || formatDnChat(get('DN CON EL QUE SE COMUNICA') || get('DN RESPOND') || ''));
+  let eid = eidOverride.trim()
+    ? eidOverride.replace(/\D/g, '')
+    : (chatData.eid || get('EID') || get('EQUIPO EID') || '');
+  const eidValid = eidOverride.trim() ? /^\d{5}$/.test(eid) : (chatData.eid ? chatData.eidValid : /^\d{5}$/.test(eid));
   const esEsim = isEsimProduct(productKey);
 
   const cpCAC = cacData.cpCAC || get('CP') || get('C\\.P\\.');
@@ -236,7 +240,7 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     eidValid,
     fvc,
     nombreCAV,
-    plan: lineaData.plan || get('PLAN') || '',
+    plan: planOverride.trim() || lineaData.plan || get('PLAN') || '',
     nip: lineaData.nip || get('NIP') || '',
     nombreTitular: lineaData.nombreTitular || get('NOMBRE TITULAR') || '',
     esEsim,
