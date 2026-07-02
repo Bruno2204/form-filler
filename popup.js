@@ -399,6 +399,18 @@ function validateRequiredData(d, productKey) {
       if (isFieldEmpty(d.eid) || !d.eidValid) missing.push(field);
       return;
     }
+    if (field === 'chatId') {
+      if (isFieldEmpty(d[field]) || !/^\d{9}$/.test(String(d[field]).trim())) missing.push(field);
+      return;
+    }
+    if (field === 'dnChat') {
+      if (isFieldEmpty(d[field]) || !String(d[field]).trim().startsWith('+')) missing.push(field);
+      return;
+    }
+    if (field === 'email') {
+      if (isFieldEmpty(d[field]) || String(d[field]).trim().endsWith('...')) missing.push(field);
+      return;
+    }
     if (isFieldEmpty(d[field]) || isPhoneFieldInvalid(field, d[field])) {
       missing.push(field);
     }
@@ -416,6 +428,17 @@ function validateRequiredData(d, productKey) {
 function getMissingFieldLabel(field, d) {
   if (field === 'dnSame') return FIELD_LABELS.dnSame;
   const label = FIELD_LABELS[field] || field;
+
+  if (field === 'chatId' && !isFieldEmpty(d[field]) && !/^\d{9}$/.test(String(d[field]).trim())) {
+    return `${label} (debe tener exactamente 9 números)`;
+  }
+  if (field === 'dnChat' && !isFieldEmpty(d[field]) && !String(d[field]).trim().startsWith('+')) {
+    return `${label} (debe empezar con "+")`;
+  }
+  if (field === 'email' && !isFieldEmpty(d[field]) && String(d[field]).trim().endsWith('...')) {
+    return `${label} (no debe terminar en "...")`;
+  }
+
   if (
     PHONE_FIELDS.includes(field) &&
     !isFieldEmpty(d[field]) &&
@@ -544,8 +567,17 @@ function validateChat(d) {
 
   if (!chatIdVal && !chatDnVal && !eidVal) return;
 
-  if ((chatIdVal || chatDnVal) && !chatIdVal) alertChatId.style.display = 'block';
-  if ((chatIdVal || chatDnVal) && !chatDnVal) alertDnChat.style.display = 'block';
+  const isChatIdValid = /^\d{9}$/.test(chatIdVal);
+  const isDnChatValid = chatDnVal.startsWith('+');
+
+  if ((chatIdVal || chatDnVal) && (!chatIdVal || !isChatIdValid)) {
+    alertChatId.textContent = chatIdVal ? '⚠ El ID del chat debe tener exactamente 9 números.' : '⚠ Falta el ID del chat.';
+    alertChatId.style.display = 'block';
+  }
+  if ((chatIdVal || chatDnVal) && (!chatDnVal || !isDnChatValid)) {
+    alertDnChat.textContent = chatDnVal ? '⚠ El DN del chat debe empezar con "+".' : '⚠ Falta el DN de Respond (con +52).';
+    alertDnChat.style.display = 'block';
+  }
   if (d.esEsim && eidVal && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
 }
 
