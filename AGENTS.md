@@ -25,7 +25,6 @@ La UI vive en el **panel lateral** (`side_panel` → `popup.html`). No hay popup
 | `popup.js` | Lógica UI, plantillas, validación, inyección al form |
 | `parser.js` | Parseo heurístico de textareas → objeto `parsed` |
 | `content.js` | `window.FormFiller`: relleno DOM en Google Forms |
-| `dropdown.js` | **Huérfano** — no referenciado en manifest ni HTML |
 
 ```
 Usuario pega datos → popup.js (processData)
