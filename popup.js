@@ -306,6 +306,31 @@ async function pasteIntoInput(inputEl) {
 let activeProduct = 'POS_ESIM';
 let missingPanelOpen = false;
 
+// Estado de interacción: qué campos han sido tocados al menos una vez.
+// Se usa para evitar mostrar inline alerts (phone-alert-*, chat-alert-*) en
+// campos que el operador aún no ha editado. El set se resetea al cambiar de
+// producto o al hacer click en "Limpiar".
+const touchedFields = new Set();
+
+function markTouched(field) {
+  touchedFields.add(field);
+}
+
+function isTouched(field) {
+  return touchedFields.has(field);
+}
+
+function resetTouched() {
+  touchedFields.clear();
+}
+
+function hasAnyTouchedInProduct(productKey, relevantFields) {
+  if (!Object.prototype.hasOwnProperty.call(PRODUCT_FIELDS, productKey)) {
+    return false;
+  }
+  return relevantFields.some((field) => touchedFields.has(field));
+}
+
 // Cambia de producto y actualiza la visibilidad de los textareas
 function selectProduct(productKey) {
   activeProduct = productKey;
@@ -808,6 +833,10 @@ if (typeof module !== 'undefined' && module.exports) {
     validateRequiredData,
     getMissingFieldLabel,
     getCleanProductName,
+    markTouched,
+    isTouched,
+    resetTouched,
+    hasAnyTouchedInProduct,
     PRODUCT_TEMPLATES,
     FIELD_LABELS,
     PHONE_FIELDS,
