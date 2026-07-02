@@ -1,19 +1,14 @@
 // ─── CONTENT ENTRY POINT ────────────────────────────────────────────────
-// Builds window.FormFiller from the per-page modules and exposes it in the
-// ISOLATED world so popup.js can keep calling window.FormFiller.fillPageN.
+// Assembles window.FormFiller from the per-page routines attached to the
+// global __ff namespace. Loaded last so all dependencies are present.
 
-import { fillPage1 } from './fillPage1.js';
-import { fillPage2 } from './fillPage2.js';
-import { fillPage3 } from './fillPage3.js';
-
-// Hardcoded operator name used by the "Nombre" dropdown on page 1.
-const NOMBRE_OPERADOR = 'Bruno';
+window.__ff = window.__ff || {};
 
 window.FormFiller = {
-  fillPage1,
-  fillPage2,
-  fillPage3,
+  fillPage1: window.__ff.fillPage1,
+  fillPage2: window.__ff.fillPage2,
+  fillPage3: window.__ff.fillPage3,
 };
 
-// Helpful in DevTools: confirms the module is live.
-console.log('[form-filler] content modules loaded (operator:', NOMBRE_OPERADOR + ')');
+// Helpful in DevTools: confirms the scripts are live.
+console.log('[form-filler] content scripts loaded');

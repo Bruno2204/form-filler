@@ -1,8 +1,11 @@
 // ─── DOM SELECTORS ──────────────────────────────────────────────────────
-// Centralized CSS / attribute selectors used by the content modules.
-// Extracted from the previous monolithic file for reuse and consistency.
+// Classic-script version: attaches SELECTORS to the global __ff namespace.
+// ESM `export` removed because the manifest's `type: "module"` for
+// content_scripts is not honored by Chrome — scripts are injected as
+// classic scripts, where `import` is a syntax error.
 
-export const SELECTORS = {
+window.__ff = window.__ff || {};
+window.__ff.SELECTORS = {
   // Each Google Forms question block lives inside this jsmodel container.
   QUESTION_BLOCK: 'div[jsmodel="CP1oW"]',
   // Question title heading inside a question block.

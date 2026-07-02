@@ -15,8 +15,15 @@
   "content_scripts": [
     {
       "matches": ["https://docs.google.com/forms/*"],
-      "js": ["content/index.js"],
-      "type": "module",
+      "js": [
+        "content/constants.js",
+        "content/utils.js",
+        "content/helpers.js",
+        "content/fillPage1.js",
+        "content/fillPage2.js",
+        "content/fillPage3.js",
+        "content/index.js"
+      ],
       "run_at": "document_idle"
     }
   ]
