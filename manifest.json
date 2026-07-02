@@ -11,5 +11,13 @@
   },
   "background": {
     "service_worker": "background.js"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://docs.google.com/forms/*"],
+      "js": ["content/index.js"],
+      "type": "module",
+      "run_at": "document_idle"
+    }
+  ]
 }
