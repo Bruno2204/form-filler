@@ -3,12 +3,59 @@ import {
   isFieldEmpty,
   isPhoneFieldInvalid,
   getCleanProductName,
+  validateRequiredData,
+  getMissingFieldLabel,
+  PRODUCT_TEMPLATES,
   FIELD_LABELS,
   PHONE_FIELDS,
   ALL_INPUT_FIELDS,
   PRODUCT_FIELDS,
   PRODUCT_REQUIRED_FIELDS,
 } from '../popup.js';
+
+// ESIM product set is the source of truth for esEsim gating in validateRequiredData.
+// Mirrors the parser.js isEsimProduct() set; the test treats the popup.js contract
+// as authoritative.
+const ESIM_PRODUCTS = new Set(['POS_ESIM', 'LN_ESIM', 'PRE_ESIM']);
+
+// Shared fixture builder. Returns an object that should make
+// validateRequiredData(d, productKey) return { valid: true, missing: [] }
+// for the given productKey. Per-field overrides are spread last so any test
+// can introduce targeted defects (empty chatId, invalid eid, etc.) without
+// rebuilding the whole object.
+function validData(productKey, overrides = {}) {
+  const base = {
+    plan: 'Plan 100',
+    nip: '1234',
+    email: 'user@example.com',
+    nombres: 'Juan',
+    apellido1: 'Pérez',
+    apellido2: 'García',
+    genero: 'M',
+    fecha: '01/01/1990',
+    lugarNacimiento: 'CDMX',
+    curp: 'PEGJ900101HDFRRN09',
+    chatId: '123456789',
+    dnChat: '+525512345678',
+    dnPortar: '5511111111',
+    dnAdicional: '5522222222',
+    dnContacto: '5533333333',
+    dnMovistar: '5544444444',
+    nombreCAV: 'CAC Centro',
+    cpCAC: '06000',
+    fvc: '15/03/2026',
+    calle: 'Av Reforma 100',
+    numExt: '100',
+    numInt: '',
+    cpDireccion: '06600',
+    colonia: 'Juárez',
+    nombreTitular: 'Juan Pérez',
+    eid: '12345',
+    eidValid: true,
+    esEsim: ESIM_PRODUCTS.has(productKey),
+  };
+  return { ...base, ...overrides };
+}
 
 // ─── Phase 2: Small Pure Functions ───────────────────────────────────────────
 
@@ -253,5 +300,284 @@ describe('constants structure', () => {
         expect.arrayContaining(['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn', 'eid'])
       );
     });
+  });
+});
+
+// ─── Phase 3: Core Validation (PR 2) ────────────────────────────────────────
+
+describe('validateRequiredData', () => {
+  describe('happy path (3.1)', () => {
+    it.each([
+      'POS_ESIM',
+      'POS_CAC',
+      'LN_ESIM',
+      'LN_CAC',
+      'PRE_ESIM',
+      'PREPAGO',
+      'ADIC_CAC',
+    ])('%s with full fixture returns { valid: true, missing: [] }', (productKey) => {
+      const result = validateRequiredData(validData(productKey), productKey);
+      expect(result.valid).toBe(true);
+      expect(result.missing).toEqual([]);
+    });
+  });
+
+  describe('dnSame rule (3.2)', () => {
+    it('POS_ESIM with equal dnPortar and dnAdicional → missing includes dnSame', () => {
+      const data = validData('POS_ESIM', {
+        dnPortar: '5511111111',
+        dnAdicional: '5511111111',
+      });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.valid).toBe(false);
+      expect(result.missing).toContain('dnSame');
+    });
+
+    it('POS_CAC with equal dnPortar and dnAdicional → missing includes dnSame', () => {
+      const data = validData('POS_CAC', {
+        dnPortar: '5511111111',
+        dnAdicional: '5511111111',
+      });
+      const result = validateRequiredData(data, 'POS_CAC');
+      expect(result.missing).toContain('dnSame');
+    });
+
+    it('PREPAGO with equal dnPortar and dnAdicional → missing includes dnSame', () => {
+      const data = validData('PREPAGO', {
+        dnPortar: '5511111111',
+        dnAdicional: '5511111111',
+      });
+      const result = validateRequiredData(data, 'PREPAGO');
+      expect(result.missing).toContain('dnSame');
+    });
+
+    it('non-portability products (LN_ESIM) do not push dnSame even if phones are equal', () => {
+      // LN_ESIM requires dnContacto (not dnPortar/dnAdicional), so the
+      // dnSame branch is structurally unreachable.
+      const data = validData('LN_ESIM', {
+        dnPortar: '5511111111',
+        dnAdicional: '5511111111',
+      });
+      const result = validateRequiredData(data, 'LN_ESIM');
+      expect(result.missing).not.toContain('dnSame');
+    });
+
+    it('ADIC_CAC does not push dnSame even with matching dnMovistar/dnContacto', () => {
+      const data = validData('ADIC_CAC', {
+        dnMovistar: '5511111111',
+        dnContacto: '5511111111',
+      });
+      const result = validateRequiredData(data, 'ADIC_CAC');
+      expect(result.missing).not.toContain('dnSame');
+    });
+
+    it('empty phones do not trigger dnSame (POS_ESIM with empty dnAdicional)', () => {
+      const data = validData('POS_ESIM', { dnAdicional: '' });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.missing).not.toContain('dnSame');
+    });
+
+    it('happy path: POS_ESIM with distinct dnPortar and dnAdicional → no dnSame', () => {
+      const data = validData('POS_ESIM', {
+        dnPortar: '5511111111',
+        dnAdicional: '5522222222',
+      });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.missing).not.toContain('dnSame');
+    });
+  });
+
+  describe('eid gating (3.3)', () => {
+    it('POS_ESIM (esEsim=true) without eid → missing includes eid', () => {
+      const data = validData('POS_ESIM', { eid: '', eidValid: true });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.missing).toContain('eid');
+    });
+
+    it('POS_ESIM (esEsim=true) with invalid eid (eidValid=false) → missing includes eid', () => {
+      const data = validData('POS_ESIM', { eid: '1234', eidValid: false });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.missing).toContain('eid');
+    });
+
+    it('POS_ESIM (esEsim=true) with valid eid → eid is not in missing', () => {
+      const data = validData('POS_ESIM', { eid: '12345', eidValid: true });
+      const result = validateRequiredData(data, 'POS_ESIM');
+      expect(result.missing).not.toContain('eid');
+    });
+
+    it('POS_CAC (esEsim=false) does not push eid even with empty eid (eid in list, gated by esEsim)', () => {
+      // POS_CAC's required list still includes 'eid' (historical), but the
+      // validation function short-circuits with `if (!d.esEsim) return;`.
+      const data = validData('POS_CAC', { eid: '', eidValid: false });
+      const result = validateRequiredData(data, 'POS_CAC');
+      expect(result.missing).not.toContain('eid');
+    });
+
+    it('LN_CAC (esEsim=false) does not push eid even with invalid eid', () => {
+      const data = validData('LN_CAC', { eid: '12', eidValid: false });
+      const result = validateRequiredData(data, 'LN_CAC');
+      expect(result.missing).not.toContain('eid');
+    });
+
+    it('PREPAGO (eid not in required list) does not push eid', () => {
+      const data = validData('PREPAGO', { eid: '', eidValid: false });
+      const result = validateRequiredData(data, 'PREPAGO');
+      expect(result.missing).not.toContain('eid');
+    });
+
+    it('ADIC_CAC (eid not in required list) does not push eid', () => {
+      const data = validData('ADIC_CAC', { eid: '', eidValid: false });
+      const result = validateRequiredData(data, 'ADIC_CAC');
+      expect(result.missing).not.toContain('eid');
+    });
+  });
+
+  describe('chatId, dnChat, email rules (3.4)', () => {
+    describe('chatId (must be exactly 9 digits)', () => {
+      it('9 digits → valid (not in missing)', () => {
+        const data = validData('POS_ESIM', { chatId: '123456789' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).not.toContain('chatId');
+      });
+
+      it('8 digits → missing', () => {
+        const data = validData('POS_ESIM', { chatId: '12345678' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('chatId');
+      });
+
+      it('10 digits → missing', () => {
+        const data = validData('POS_ESIM', { chatId: '1234567890' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('chatId');
+      });
+
+      it('letters mixed with digits → missing', () => {
+        const data = validData('POS_ESIM', { chatId: 'CHAT1234' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('chatId');
+      });
+
+      it('empty string → missing', () => {
+        const data = validData('POS_ESIM', { chatId: '' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('chatId');
+      });
+    });
+
+    describe('dnChat (must start with +)', () => {
+      it('starts with + → valid (not in missing)', () => {
+        const data = validData('POS_ESIM', { dnChat: '+525512345678' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).not.toContain('dnChat');
+      });
+
+      it('does not start with + → missing', () => {
+        const data = validData('POS_ESIM', { dnChat: '5512345678' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('dnChat');
+      });
+
+      it('empty string → missing', () => {
+        const data = validData('POS_ESIM', { dnChat: '' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('dnChat');
+      });
+    });
+
+    describe('email (must not end with ...)', () => {
+      it('plain email → valid (not in missing)', () => {
+        const data = validData('POS_ESIM', { email: 'user@example.com' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).not.toContain('email');
+      });
+
+      it('ends with ... → missing', () => {
+        const data = validData('POS_ESIM', { email: 'user@example...' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('email');
+      });
+
+      it('empty string → missing', () => {
+        const data = validData('POS_ESIM', { email: '' });
+        const result = validateRequiredData(data, 'POS_ESIM');
+        expect(result.missing).toContain('email');
+      });
+    });
+  });
+});
+
+describe('getMissingFieldLabel', () => {
+  it('returns dedicated label for dnSame (contains "distintos")', () => {
+    const label = getMissingFieldLabel('dnSame', {});
+    expect(label).toBe(FIELD_LABELS.dnSame);
+    expect(label).toContain('distintos');
+  });
+
+  it('chatId non-empty + wrong format → appends (debe tener exactamente 9 números)', () => {
+    const d = { chatId: '12345' }; // 5 digits, non-empty
+    const label = getMissingFieldLabel('chatId', d);
+    expect(label).toBe(`${FIELD_LABELS.chatId} (debe tener exactamente 9 números)`);
+  });
+
+  it('chatId empty → returns plain label (no contextual hint)', () => {
+    const d = { chatId: '' };
+    const label = getMissingFieldLabel('chatId', d);
+    expect(label).toBe(FIELD_LABELS.chatId);
+    expect(label).not.toContain('9 números');
+  });
+
+  it('dnChat non-empty + no + → appends (debe empezar con "+")', () => {
+    const d = { dnChat: '5512345678' };
+    const label = getMissingFieldLabel('dnChat', d);
+    expect(label).toBe(`${FIELD_LABELS.dnChat} (debe empezar con "+")`);
+  });
+
+  it('dnChat empty → returns plain label (no contextual hint)', () => {
+    const d = { dnChat: '' };
+    const label = getMissingFieldLabel('dnChat', d);
+    expect(label).toBe(FIELD_LABELS.dnChat);
+  });
+
+  it('email ending in ... → appends (no debe terminar en "...")', () => {
+    const d = { email: 'user@example...' };
+    const label = getMissingFieldLabel('email', d);
+    expect(label).toBe(`${FIELD_LABELS.email} (no debe terminar en "...")`);
+  });
+
+  it('email empty → returns plain label (no contextual hint)', () => {
+    const d = { email: '' };
+    const label = getMissingFieldLabel('email', d);
+    expect(label).toBe(FIELD_LABELS.email);
+  });
+
+  it('phone field non-empty + invalid → appends (debe tener 10 dígitos)', () => {
+    const d = { dnPortar: '55123' }; // 5 digits
+    const label = getMissingFieldLabel('dnPortar', d);
+    expect(label).toBe(`${FIELD_LABELS.dnPortar} (debe tener 10 dígitos)`);
+  });
+
+  it('phone field empty → returns plain label (no contextual hint)', () => {
+    const d = { dnPortar: '' };
+    const label = getMissingFieldLabel('dnPortar', d);
+    expect(label).toBe(FIELD_LABELS.dnPortar);
+  });
+
+  it('eid non-empty + !eidValid → returns "EID (debe tener 5 dígitos)"', () => {
+    const d = { eid: '1234', eidValid: false };
+    const label = getMissingFieldLabel('eid', d);
+    expect(label).toBe('EID (debe tener 5 dígitos)');
+  });
+
+  it('eid empty → returns plain label (no contextual hint)', () => {
+    const d = { eid: '' };
+    const label = getMissingFieldLabel('eid', d);
+    expect(label).toBe(FIELD_LABELS.eid);
+  });
+
+  it('unknown field returns the field name itself (no FIELD_LABELS entry)', () => {
+    expect(getMissingFieldLabel('xyz', {})).toBe('xyz');
+    expect(getMissingFieldLabel('notARealField', { notARealField: 'foo' })).toBe('notARealField');
   });
 });
