@@ -1,10 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   isFieldEmpty,
   isPhoneFieldInvalid,
   getCleanProductName,
   validateRequiredData,
   getMissingFieldLabel,
+  markTouched,
+  isTouched,
+  resetTouched,
+  hasAnyTouchedInProduct,
   PRODUCT_TEMPLATES,
   FIELD_LABELS,
   PHONE_FIELDS,
@@ -663,6 +667,178 @@ describe('PRODUCT_TEMPLATES', () => {
           `${productKey} should produce multiple non-empty lines (got ${nonEmptyLines.length})`
         ).toBeGreaterThan(3);
       }
+    });
+  });
+});
+
+// ─── Phase 4: Touched-field state tracking (4.2–4.5) ──────────────────────────
+//
+// The touched-field helpers are pure wrappers around a module-scope Set.
+// Each test resets the Set in beforeEach to keep order-independent assertions.
+
+describe('touched-field state tracking', () => {
+  beforeEach(() => {
+    resetTouched();
+  });
+
+  describe('markTouched (4.2)', () => {
+    it('marks a field so isTouched returns true', () => {
+      markTouched('linea');
+      expect(isTouched('linea')).toBe(true);
+    });
+
+    it('is idempotent — calling twice on the same field keeps the Set size at 1', () => {
+      markTouched('linea');
+      markTouched('linea');
+      expect(isTouched('linea')).toBe(true);
+      // No way to introspect Set size from outside, but a second call to a
+      // different field gives size 2 (verifies that duplicate markTouched
+      // did not create phantom entries or throw).
+      markTouched('plan');
+      expect(isTouched('linea')).toBe(true);
+      expect(isTouched('plan')).toBe(true);
+    });
+
+    it('accepts any string key, including the field names from ALL_INPUT_FIELDS', () => {
+      for (const field of ALL_INPUT_FIELDS) {
+        markTouched(field);
+        expect(isTouched(field)).toBe(true);
+      }
+    });
+
+    it('does not throw on empty string or unusual keys', () => {
+      expect(() => markTouched('')).not.toThrow();
+      expect(() => markTouched('some-unknown-field')).not.toThrow();
+      expect(isTouched('some-unknown-field')).toBe(true);
+    });
+  });
+
+  describe('isTouched (4.3)', () => {
+    it('returns true after markTouched on the same field', () => {
+      markTouched('curp');
+      expect(isTouched('curp')).toBe(true);
+    });
+
+    it('returns false for a field that was never marked', () => {
+      expect(isTouched('curp')).toBe(false);
+      expect(isTouched('plan')).toBe(false);
+    });
+
+    it('returns false for an unknown field key', () => {
+      markTouched('linea');
+      expect(isTouched('this-field-does-not-exist')).toBe(false);
+    });
+
+    it('returns false after resetTouched for a previously-marked field', () => {
+      markTouched('linea');
+      resetTouched();
+      expect(isTouched('linea')).toBe(false);
+    });
+
+    it('isolates fields — marking one does not affect another', () => {
+      markTouched('linea');
+      expect(isTouched('linea')).toBe(true);
+      expect(isTouched('plan')).toBe(false);
+      expect(isTouched('curp')).toBe(false);
+    });
+  });
+
+  describe('resetTouched (4.4)', () => {
+    it('clears the Set so previously-marked fields report isTouched=false', () => {
+      markTouched('linea');
+      markTouched('plan');
+      markTouched('curp');
+      resetTouched();
+      expect(isTouched('linea')).toBe(false);
+      expect(isTouched('plan')).toBe(false);
+      expect(isTouched('curp')).toBe(false);
+    });
+
+    it('is safe to call on an empty Set (no throw)', () => {
+      expect(() => resetTouched()).not.toThrow();
+      expect(isTouched('anything')).toBe(false);
+    });
+
+    it('subsequent markTouched after resetTouched still works', () => {
+      markTouched('linea');
+      resetTouched();
+      markTouched('plan');
+      expect(isTouched('plan')).toBe(true);
+      expect(isTouched('linea')).toBe(false);
+    });
+  });
+
+  describe('hasAnyTouchedInProduct (4.5)', () => {
+    it('returns false when no relevant field is touched', () => {
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(false);
+    });
+
+    it('returns true when at least one field in relevantFields is touched', () => {
+      markTouched('linea');
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(true);
+    });
+
+    it('returns true when only one of several relevant fields is touched', () => {
+      markTouched('chat-id');
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(true);
+    });
+
+    it('ignores touched fields outside the relevantFields list', () => {
+      // 'plan' is touched but not in the relevant list for validatePhones.
+      markTouched('plan');
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
+    });
+
+    it('returns false for an unknown product key (defensive guard)', () => {
+      markTouched('linea');
+      expect(hasAnyTouchedInProduct('NOT_A_PRODUCT', ['linea'])).toBe(false);
+      expect(hasAnyTouchedInProduct('', ['linea'])).toBe(false);
+      expect(hasAnyTouchedInProduct(undefined, ['linea'])).toBe(false);
+    });
+
+    it('returns true for the same product key after product switch reset (caller invariant)', () => {
+      // Documents the contract: resetTouched() is what the caller uses to
+      // enforce per-product state — the helper itself does not consult
+      // PRODUCT_FIELDS for membership filtering of relevantFields.
+      markTouched('linea');
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(true);
+      resetTouched();
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
+    });
+
+    it('returns false when relevantFields is empty (no fields to check)', () => {
+      markTouched('linea');
+      markTouched('plan');
+      expect(hasAnyTouchedInProduct('POS_ESIM', [])).toBe(false);
+    });
+  });
+
+  describe('interaction between helpers (4.5 follow-up)', () => {
+    it('product switch workflow: markTouched → resetTouched → hasAnyTouchedInProduct false', () => {
+      // Simulates the user flow that triggered the bug:
+      // 1) user types in 'linea' (markTouched via input event)
+      // 2) user switches product (selectProduct calls resetTouched)
+      // 3) inline alerts for the new product stay hidden until they type again
+      markTouched('linea');
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(true);
+
+      resetTouched(); // mirrors selectProduct
+      expect(hasAnyTouchedInProduct('LN_CAC', ['linea'])).toBe(false);
+    });
+
+    it('clear workflow: markTouched → resetTouched (btnClear) → all false', () => {
+      markTouched('linea');
+      markTouched('chat-id');
+      markTouched('plan');
+
+      resetTouched(); // mirrors btnClear
+
+      expect(isTouched('linea')).toBe(false);
+      expect(isTouched('chat-id')).toBe(false);
+      expect(isTouched('plan')).toBe(false);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(false);
     });
   });
 });
