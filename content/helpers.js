@@ -1,6 +1,6 @@
 // ─── DOM HELPERS ─────────────────────────────────────────────────────────
 // Reusable low-level DOM utilities. These used to live on
-// `window.FormFiller.helpers` in the old monolithic content.js. The popup
+// `window.FormFiller.helpers` in the previous monolithic file. The popup
 // only ever called window.FormFiller[fillPageN], so we don't need to expose
 // them on window anymore — the page routines import them directly.
 

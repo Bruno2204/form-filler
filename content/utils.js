@@ -1,11 +1,12 @@
 // ─── UTILITIES ──────────────────────────────────────────────────────────
 // Small pure helpers used by the page routines. Extracted from the
-// inlined blocks in the old content.js (3 `isLineaNueva` blocks + the
-// FVC date conversion + the genero classifier).
+// inlined blocks in the previous monolithic file (3 `isLineaNueva`
+// blocks + the FVC date conversion + the genero classifier).
 
 // Returns true when the product is a "linea nueva" variant.
-// Unified from the 3 inlined blocks in old content.js (page 1, page 2,
-// page 3). Block 2 originally only matched 'Linea Nueva Esim' and
+// Unified from the 3 inlined blocks in the previous monolithic file
+// (page 1, page 2, page 3). Block 2 originally only matched
+// 'Linea Nueva Esim' and
 // 'Línea Nueva Prepago Esim', but the only products that ever reach that
 // code path with esEsim=true are POS_ESIM, LN_ESIM and PRE_ESIM — and the
 // new union still returns the same boolean for each of them. Block 4

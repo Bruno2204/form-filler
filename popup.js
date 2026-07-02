@@ -768,7 +768,8 @@ function getAccumulatedData() {
   return parsed;
 }
 
-// Inyecta dinámicamente content.js si no lo está y manda a rellenar la página N
+// Manda a rellenar la página N ejecutando fillPageN sobre la pestaña activa.
+// content/index.js se inyecta automáticamente vía content_scripts (manifest.json).
 async function runFillerOnPage(pageFunctionName) {
   const data = getAccumulatedData();
   const status = document.getElementById('status');
@@ -802,11 +803,6 @@ async function runFillerOnPage(pageFunctionName) {
   }
 
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['content.js'],
-    });
-
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: async (pageFuncStr, d) => {

@@ -1,6 +1,6 @@
 // ─── DOM SELECTORS ──────────────────────────────────────────────────────
 // Centralized CSS / attribute selectors used by the content modules.
-// Extracted from the old monolithic content.js for reuse and consistency.
+// Extracted from the previous monolithic file for reuse and consistency.
 
 export const SELECTORS = {
   // Each Google Forms question block lives inside this jsmodel container.
