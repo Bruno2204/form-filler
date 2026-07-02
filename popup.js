@@ -807,17 +807,25 @@ async function runFillerOnPage(pageFunctionName) {
       target: { tabId: tab.id },
       func: async (pageFuncStr, d) => {
         if (!window.FormFiller) {
-          return {
-            ok: false,
-            error:
-              'window.FormFiller no está cargado. Recargá la pestaña del form.',
-          };
+          // Fallback: la pestaña no fue recargada desde que se actualizó la
+          // extensión, así que el content_scripts auto-inject nunca corrió.
+          // Importamos el módulo dinámicamente para que window.FormFiller
+          // se arme como side-effect del import.
+          try {
+            const url = chrome.runtime.getURL('content/index.js');
+            await import(url);
+          } catch (e) {
+            return {
+              ok: false,
+              error: `Auto-inject no se hizo y el fallback falló: ${e.message}. Recargá la pestaña del form.`,
+            };
+          }
         }
-        const fn = window.FormFiller[pageFuncStr];
+        const fn = window.FormFiller?.[pageFuncStr];
         if (typeof fn !== 'function') {
           return {
             ok: false,
-            error: `window.FormFiller.${pageFuncStr} no es función (${typeof fn}).`,
+            error: `window.FormFiller.${pageFuncStr} no es función (${typeof fn}). Recargá la pestaña del form.`,
           };
         }
         return await fn(d);
