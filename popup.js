@@ -581,102 +581,107 @@ function validateChat(d) {
   if (d.esEsim && eidVal && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
 }
 
-// Copiar resultado al portapapeles
-document.getElementById('btn-missing-info').addEventListener('click', () => {
-  missingPanelOpen = !missingPanelOpen;
-  document
-    .getElementById('missing-details-panel')
-    .classList.toggle('visible', missingPanelOpen);
-});
-
-document.getElementById('btnCopy').addEventListener('click', () => {
-  const resultText = document.getElementById('result-final');
-  resultText.select();
-  document.execCommand('copy');
-
-  const copyBtn = document.getElementById('btnCopy');
-  copyBtn.textContent = '¡Copiado!';
-  copyBtn.style.background = '#0f9d58';
-
-  setTimeout(() => {
-    copyBtn.textContent = 'Copiar';
-    copyBtn.style.background = 'var(--success)';
-  }, 1500);
-});
-
-// Limpiar todas las entradas y cache
-document.getElementById('btnClear').addEventListener('click', () => {
-  ALL_INPUT_FIELDS.forEach((field) => {
-    const el = document.getElementById(`input-${field}`);
-    if (el) el.value = '';
-    localStorage.removeItem(`input_cache_${field}`);
-  });
-  document.getElementById('result-final').value = '';
-  document.getElementById('phone-alert-portar').style.display = 'none';
-  document.getElementById('phone-alert-adicional').style.display = 'none';
-  document.getElementById('phone-alert-contacto').style.display = 'none';
-  document.getElementById('phone-alert-movistar').style.display = 'none';
-  document.getElementById('phone-alert-same').style.display = 'none';
-  document.getElementById('chat-alert-id').style.display = 'none';
-  document.getElementById('chat-alert-dn').style.display = 'none';
-  document.getElementById('chat-alert-eid').style.display = 'none';
-  missingPanelOpen = false;
-  document.getElementById('missing-details-panel').classList.remove('visible');
-  updateFormActionsState({});
-  document.getElementById('status').textContent = '🧹 Datos borrados.';
-  setTimeout(() => {
-    document.getElementById('status').textContent = '';
-  }, 2000);
-});
-
-// Cargar estado inicial
-document.addEventListener('DOMContentLoaded', () => {
-  // Cargar campos desde localStorage
-  ALL_INPUT_FIELDS.forEach((field) => {
-    const el = document.getElementById(`input-${field}`);
-    if (!el) return;
-    const saved = localStorage.getItem(`input_cache_${field}`);
-    if (saved) el.value = saved;
+// Browser-only glue: registers DOM event listeners at module load.
+// Guarded so the file is require()-able in Node for unit tests; the
+// behavior is identical in the browser because `document` is always defined there.
+if (typeof document !== 'undefined') {
+  // Copiar resultado al portapapeles
+  document.getElementById('btn-missing-info').addEventListener('click', () => {
+    missingPanelOpen = !missingPanelOpen;
+    document
+      .getElementById('missing-details-panel')
+      .classList.toggle('visible', missingPanelOpen);
   });
 
-  // Restaurar producto activo
-  const savedProduct = localStorage.getItem('active_product') || 'POS_ESIM';
-  selectProduct(savedProduct);
+  document.getElementById('btnCopy').addEventListener('click', () => {
+    const resultText = document.getElementById('result-final');
+    resultText.select();
+    document.execCommand('copy');
 
-  // Escuchar eventos input y doble clic en cada campo
-  let lastClickEl = null;
-  let lastClickTime = 0;
+    const copyBtn = document.getElementById('btnCopy');
+    copyBtn.textContent = '¡Copiado!';
+    copyBtn.style.background = '#0f9d58';
 
-  ALL_INPUT_FIELDS.forEach((field) => {
-    const el = document.getElementById(`input-${field}`);
-    if (!el) return;
+    setTimeout(() => {
+      copyBtn.textContent = 'Copiar';
+      copyBtn.style.background = 'var(--success)';
+    }, 1500);
+  });
 
-    el.addEventListener('input', processData);
+  // Limpiar todas las entradas y cache
+  document.getElementById('btnClear').addEventListener('click', () => {
+    ALL_INPUT_FIELDS.forEach((field) => {
+      const el = document.getElementById(`input-${field}`);
+      if (el) el.value = '';
+      localStorage.removeItem(`input_cache_${field}`);
+    });
+    document.getElementById('result-final').value = '';
+    document.getElementById('phone-alert-portar').style.display = 'none';
+    document.getElementById('phone-alert-adicional').style.display = 'none';
+    document.getElementById('phone-alert-contacto').style.display = 'none';
+    document.getElementById('phone-alert-movistar').style.display = 'none';
+    document.getElementById('phone-alert-same').style.display = 'none';
+    document.getElementById('chat-alert-id').style.display = 'none';
+    document.getElementById('chat-alert-dn').style.display = 'none';
+    document.getElementById('chat-alert-eid').style.display = 'none';
+    missingPanelOpen = false;
+    document.getElementById('missing-details-panel').classList.remove('visible');
+    updateFormActionsState({});
+    document.getElementById('status').textContent = '🧹 Datos borrados.';
+    setTimeout(() => {
+      document.getElementById('status').textContent = '';
+    }, 2000);
+  });
 
-    // Doble clic → pegar del portapapeles (nueva línea si ya hay contenido)
-    // Usamos mousedown para evitar interferencia con la selección nativa de dblclick
-    el.addEventListener('mousedown', (e) => {
-      const now = Date.now();
-      if (lastClickEl === el && now - lastClickTime < 300) {
-        e.preventDefault(); // evita selección de texto
-        pasteIntoInput(el);
-        lastClickEl = null;
-        lastClickTime = 0;
-      } else {
-        lastClickEl = el;
-        lastClickTime = now;
-      }
+  // Cargar estado inicial
+  document.addEventListener('DOMContentLoaded', () => {
+    // Cargar campos desde localStorage
+    ALL_INPUT_FIELDS.forEach((field) => {
+      const el = document.getElementById(`input-${field}`);
+      if (!el) return;
+      const saved = localStorage.getItem(`input_cache_${field}`);
+      if (saved) el.value = saved;
+    });
+
+    // Restaurar producto activo
+    const savedProduct = localStorage.getItem('active_product') || 'POS_ESIM';
+    selectProduct(savedProduct);
+
+    // Escuchar eventos input y doble clic en cada campo
+    let lastClickEl = null;
+    let lastClickTime = 0;
+
+    ALL_INPUT_FIELDS.forEach((field) => {
+      const el = document.getElementById(`input-${field}`);
+      if (!el) return;
+
+      el.addEventListener('input', processData);
+
+      // Doble clic → pegar del portapapeles (nueva línea si ya hay contenido)
+      // Usamos mousedown para evitar interferencia con la selección nativa de dblclick
+      el.addEventListener('mousedown', (e) => {
+        const now = Date.now();
+        if (lastClickEl === el && now - lastClickTime < 300) {
+          e.preventDefault(); // evita selección de texto
+          pasteIntoInput(el);
+          lastClickEl = null;
+          lastClickTime = 0;
+        } else {
+          lastClickEl = el;
+          lastClickTime = now;
+        }
+      });
     });
   });
-});
 
-// Asignar click a botones de producto
-document.querySelectorAll('.btn-product').forEach((btn) => {
-  btn.addEventListener('click', (e) => {
-    const prod = e.target.getAttribute('data-product');
-    selectProduct(prod);
+  // Asignar click a botones de producto
+  document.querySelectorAll('.btn-product').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const prod = e.target.getAttribute('data-product');
+      selectProduct(prod);
+    });
   });
-});
+}
 
 // ─── HELPERS DE INYECCIÓN Y AUTOLLENADO ──────────────────────────────────────
 
@@ -779,12 +784,35 @@ async function runFillerOnPage(pageFunctionName) {
 }
 
 // Eventos a los botones de autocompletar
-document
-  .getElementById('btn1')
-  .addEventListener('click', () => runFillerOnPage('fillPage1'));
-document
-  .getElementById('btn2')
-  .addEventListener('click', () => runFillerOnPage('fillPage2'));
-document
-  .getElementById('btn3')
-  .addEventListener('click', () => runFillerOnPage('fillPage3'));
+if (typeof document !== 'undefined') {
+  document
+    .getElementById('btn1')
+    .addEventListener('click', () => runFillerOnPage('fillPage1'));
+  document
+    .getElementById('btn2')
+    .addEventListener('click', () => runFillerOnPage('fillPage2'));
+  document
+    .getElementById('btn3')
+    .addEventListener('click', () => runFillerOnPage('fillPage3'));
+}
+
+// Conditional exports for Node.js / CJS testing (browser-safe, no behavior change).
+// Exports are limited to pure values + functions; DOM-coupled glue
+// (processData, selectProduct, updateFormActionsState, validatePhones,
+// validateChat, getAccumulatedData, runFillerOnPage, pasteIntoInput) is
+// intentionally omitted and tested at the integration / E2E layer.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    isFieldEmpty,
+    isPhoneFieldInvalid,
+    validateRequiredData,
+    getMissingFieldLabel,
+    getCleanProductName,
+    PRODUCT_TEMPLATES,
+    FIELD_LABELS,
+    PHONE_FIELDS,
+    PRODUCT_FIELDS,
+    PRODUCT_REQUIRED_FIELDS,
+    ALL_INPUT_FIELDS,
+  };
+}
