@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   cleanPhone,
   isEsimProduct,
@@ -9,6 +9,23 @@ import {
   parseDireccionField,
   parseData,
 } from '../parser.js';
+
+// Year completed at parse time uses `new Date().getFullYear()` (see parser.js).
+// Centralize fake timers at file top so every FVC assertion — both inside
+// the parseCacField describe block AND the parseData tests at lines ~450/521 —
+// runs against a deterministic clock. Pinned mid-year so calendar boundaries
+// (Dec 31 → Jan 1) are clearly observable in dedicated edge-case tests.
+const CURRENT_YEAR = 2026;
+const FROZEN_NOW = new Date(CURRENT_YEAR, 6, 15); // 2026-07-15 local time
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(FROZEN_NOW);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 // ─── Phase 3: Utility Function Tests ──────────────────────────────────────────
 
@@ -257,13 +274,13 @@ describe('parseCacField', () => {
     expect(result).toEqual({
       nombreCAV: 'CAC Norte',
       cpCAC: '06600',
-      fvc: '15/06/2026',
+      fvc: `15/06/${CURRENT_YEAR}`,
     });
   });
 
-  it('completes year for dd/mm format with 2026', () => {
+  it('completes year for dd/mm format with current year', () => {
     const result = parseCacField('CAC\n06600\n01/12');
-    expect(result.fvc).toBe('01/12/2026');
+    expect(result.fvc).toBe(`01/12/${CURRENT_YEAR}`);
   });
 
   it('does not modify FVC if already has year', () => {
@@ -300,7 +317,33 @@ describe('parseCacField', () => {
 
   it('handles single-digit day/month in FVC', () => {
     const result = parseCacField('CAC\n06600\n5/3');
-    expect(result.fvc).toBe('5/3/2026');
+    expect(result.fvc).toBe(`5/3/${CURRENT_YEAR}`);
+  });
+
+  // ── Edge cases: year source is `new Date().getFullYear()` ────────────────
+  // These tests override the file-level fake timer set in beforeEach so they
+  // can probe the Dec 31 → Jan 1 boundary explicitly. afterEach restores real
+  // timers; the next beforeEach will reset to FROZEN_NOW.
+
+  it('rolls over to new year on Jan 1 boundary', () => {
+    // Last second of 2026
+    vi.setSystemTime(new Date(2026, 11, 31, 23, 59, 59));
+    expect(parseCacField('CAC\n06600\n25/12').fvc).toBe('25/12/2026');
+
+    // First second of 2027
+    vi.setSystemTime(new Date(2027, 0, 1, 0, 0, 1));
+    expect(parseCacField('CAC\n06600\n15/03').fvc).toBe('15/03/2027');
+  });
+
+  it('does not modify FVC if year already present', () => {
+    // Even if the system clock is in 2030, a pre-completed year must pass through.
+    vi.setSystemTime(new Date(2030, 5, 1));
+    expect(parseCacField('CAC\n06600\n15/03/2027').fvc).toBe('15/03/2027');
+  });
+
+  it('does not modify FVC with invalid format (15-03)', () => {
+    // Hyphen-separated dates do not match the dd/mm regex, so the line is kept as-is.
+    expect(parseCacField('CAC\n06600\n15-03').fvc).toBe('15-03');
   });
 });
 
@@ -447,7 +490,7 @@ describe('parseData', () => {
     expect(result.esCAC).toBe(true);
     expect(result.nombreCAV).toBe('CAC Norte');
     expect(result.cpCAC).toBe('06600');
-    expect(result.fvc).toBe('15/06/2026');
+    expect(result.fvc).toBe(`15/06/${CURRENT_YEAR}`);
   });
 
   it('sets esCAC false when no CAC data', () => {
@@ -518,7 +561,7 @@ describe('parseData', () => {
     expect(result.nombreTitular).toBe('Titular Name');
     expect(result.nombreCAV).toBe('CAC Sur');
     expect(result.cpCAC).toBe('12345');
-    expect(result.fvc).toBe('20/12/2026');
+    expect(result.fvc).toBe(`20/12/${CURRENT_YEAR}`);
     expect(result.esEsim).toBe(false);
     expect(result.esCAC).toBe(true);
   });
