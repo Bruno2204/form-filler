@@ -806,7 +806,21 @@ async function runFillerOnPage(pageFunctionName) {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: async (pageFuncStr, d) => {
-        return await window.FormFiller[pageFuncStr](d);
+        if (!window.FormFiller) {
+          return {
+            ok: false,
+            error:
+              'window.FormFiller no está cargado. Recargá la pestaña del form.',
+          };
+        }
+        const fn = window.FormFiller[pageFuncStr];
+        if (typeof fn !== 'function') {
+          return {
+            ok: false,
+            error: `window.FormFiller.${pageFuncStr} no es función (${typeof fn}).`,
+          };
+        }
+        return await fn(d);
       },
       args: [pageFunctionName, data],
     });
@@ -818,10 +832,11 @@ async function runFillerOnPage(pageFunctionName) {
         status.textContent = '';
       }, 2000);
     } else {
-      status.textContent = '⚠ No se pudieron rellenar los campos.';
+      const errMsg = r?.error ? `: ${r.error}` : '';
+      status.textContent = `⚠ No se pudieron rellenar los campos${errMsg}`;
       setTimeout(() => {
         status.textContent = '';
-      }, 3000);
+      }, 5000);
     }
   } catch (err) {
     console.error(err);
