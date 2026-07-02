@@ -581,3 +581,88 @@ describe('getMissingFieldLabel', () => {
     expect(getMissingFieldLabel('notARealField', { notARealField: 'foo' })).toBe('notARealField');
   });
 });
+
+// ─── Phase 4: Template Assertions (PR 2) ────────────────────────────────────
+
+describe('PRODUCT_TEMPLATES', () => {
+  describe('per-product substring assertions (4.1)', () => {
+    it('POS_ESIM contains plan, dnPortar, dnAdicional, email, nombres', () => {
+      const result = PRODUCT_TEMPLATES.POS_ESIM(validData('POS_ESIM'));
+      expect(result).toContain('Plan 100');
+      expect(result).toContain('5511111111'); // dnPortar
+      expect(result).toContain('5522222222'); // dnAdicional
+      expect(result).toContain('user@example.com');
+      expect(result).toContain('Juan'); // nombres
+    });
+
+    it('POS_CAC contains nombreCAV and cpCAC values (CAC section)', () => {
+      const result = PRODUCT_TEMPLATES.POS_CAC(validData('POS_CAC'));
+      expect(result).toContain('CAC Centro');
+      expect(result).toContain('06000'); // cpCAC
+    });
+
+    it('LN_ESIM contains dnContacto + direccion components (calle, cpDireccion, colonia)', () => {
+      const result = PRODUCT_TEMPLATES.LN_ESIM(validData('LN_ESIM'));
+      expect(result).toContain('5533333333'); // dnContacto
+      expect(result).toContain('Av Reforma 100'); // calle
+      expect(result).toContain('06600'); // cpDireccion
+      expect(result).toContain('Juárez'); // colonia
+    });
+
+    it('LN_CAC contains dnContacto + direccion components', () => {
+      const result = PRODUCT_TEMPLATES.LN_CAC(validData('LN_CAC'));
+      expect(result).toContain('5533333333'); // dnContacto
+      expect(result).toContain('Av Reforma 100'); // calle
+      expect(result).toContain('06600'); // cpDireccion
+      expect(result).toContain('Juárez'); // colonia
+    });
+
+    it('PRE_ESIM contains dnContacto and email (no address block)', () => {
+      const result = PRODUCT_TEMPLATES.PRE_ESIM(validData('PRE_ESIM'));
+      expect(result).toContain('5533333333'); // dnContacto
+      expect(result).toContain('user@example.com');
+      expect(result).not.toContain('CALLE:');
+    });
+
+    it('PREPAGO contains dnPortar and dnAdicional (no direccion block)', () => {
+      const result = PRODUCT_TEMPLATES.PREPAGO(validData('PREPAGO'));
+      expect(result).toContain('5511111111'); // dnPortar
+      expect(result).toContain('5522222222'); // dnAdicional
+      expect(result).not.toContain('CALLE:');
+    });
+
+    it('ADIC_CAC contains dnMovistar, dnContacto, and nombreTitular', () => {
+      const result = PRODUCT_TEMPLATES.ADIC_CAC(validData('ADIC_CAC'));
+      expect(result).toContain('5544444444'); // dnMovistar
+      expect(result).toContain('5533333333'); // dnContacto
+      expect(result).toContain('Juan Pérez'); // nombreTitular
+    });
+  });
+
+  describe('empty input and multi-line output (4.2)', () => {
+    it('every template returns a non-empty string for empty input (headers are static)', () => {
+      // Templates include static headers like "POSPAGO ESIM" / "PREPAGO" /
+      // "Línea Nueva ESIM" / "Adición CAC" even when d is empty, because
+      // headers don't interpolate any field. This documents the contract.
+      expect(PRODUCT_TEMPLATES.POS_ESIM({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.POS_CAC({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.LN_ESIM({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.LN_CAC({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.PRE_ESIM({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.PREPAGO({}).length).toBeGreaterThan(0);
+      expect(PRODUCT_TEMPLATES.ADIC_CAC({}).length).toBeGreaterThan(0);
+    });
+
+    it('every template returns a multi-line string with a complete fixture', () => {
+      // Catches the regression of a template collapsing to a single line.
+      for (const productKey of Object.keys(PRODUCT_TEMPLATES)) {
+        const result = PRODUCT_TEMPLATES[productKey](validData(productKey));
+        const nonEmptyLines = result.split('\n').filter((l) => l.length > 0);
+        expect(
+          nonEmptyLines.length,
+          `${productKey} should produce multiple non-empty lines (got ${nonEmptyLines.length})`
+        ).toBeGreaterThan(3);
+      }
+    });
+  });
+});
