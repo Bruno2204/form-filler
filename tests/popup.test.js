@@ -47,7 +47,7 @@ function validData(productKey, overrides = {}) {
     dnMovistar: '5544444444',
     nombreCAV: 'CAC Centro',
     cpCAC: '06000',
-    fvc: '15/03/2026',
+    fvc: '15/03/' + new Date().getFullYear(),
     calle: 'Av Reforma 100',
     numExt: '100',
     numInt: '',

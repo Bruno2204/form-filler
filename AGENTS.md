@@ -162,7 +162,7 @@ Teléfonos por producto:
 | LN_ESIM, LN_CAC, PRE_ESIM | dnContacto | — |
 | ADIC_CAC | dnMovistar | dnContacto |
 
-**`parseCacField`**: línea 1 = CAC, 2 = CP, 3 = FVC (año `2026` si solo dd/mm).
+**`parseCacField`**: línea 1 = CAC, 2 = CP, 3 = FVC (año actual vía `new Date().getFullYear()` si solo dd/mm — el reloj del sistema se usa en parseo; los tests congelan el reloj con `vi.setSystemTime`).
 
 **`parseDireccionField`**: 1–4+ líneas con reglas de calle/colonia/CP/números.
 
