@@ -617,12 +617,12 @@ function validateChat(d) {
   const isChatIdValid = /^\d{9}$/.test(chatIdVal);
   const isDnChatValid = chatDnVal.startsWith('+');
 
-  if ((chatIdVal || chatDnVal) && (!chatIdVal || !isChatIdValid)) {
-    alertChatId.textContent = chatIdVal ? '⚠ El ID del chat debe tener exactamente 9 números.' : '⚠ Falta el ID del chat.';
+  if (chatIdVal && !isChatIdValid) {
+    alertChatId.textContent = '⚠ El ID del chat debe tener exactamente 9 números.';
     alertChatId.style.display = 'block';
   }
-  if ((chatIdVal || chatDnVal) && (!chatDnVal || !isDnChatValid)) {
-    alertDnChat.textContent = chatDnVal ? '⚠ El DN del chat debe empezar con "+".' : '⚠ Falta el DN de Respond (con +52).';
+  if (chatDnVal && !isDnChatValid) {
+    alertDnChat.textContent = '⚠ El DN del chat debe empezar con "+".';
     alertDnChat.style.display = 'block';
   }
   if (d.esEsim && eidVal && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
