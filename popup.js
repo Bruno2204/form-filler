@@ -335,6 +335,7 @@ function hasAnyTouchedInProduct(productKey, relevantFields) {
 function selectProduct(productKey) {
   activeProduct = productKey;
   localStorage.setItem('active_product', productKey);
+  resetTouched();
 
   // Marcar botón activo
   document.querySelectorAll('.btn-product').forEach((btn) => {
@@ -535,6 +536,18 @@ function validatePhones(d) {
   const alertMovistar = document.getElementById('phone-alert-movistar');
   const alertSame = document.getElementById('phone-alert-same');
 
+  // Gate: las inline alerts sólo aparecen si el campo 'linea' fue tocado
+  // para el producto activo. Mantiene el comportamiento hide-then-show
+  // original cuando el gate pasa.
+  if (!hasAnyTouchedInProduct(activeProduct, ['linea'])) {
+    alertPortar.style.display = 'none';
+    alertAdicional.style.display = 'none';
+    alertContacto.style.display = 'none';
+    alertMovistar.style.display = 'none';
+    alertSame.style.display = 'none';
+    return;
+  }
+
   // Ocultar por defecto
   alertPortar.style.display = 'none';
   alertAdicional.style.display = 'none';
@@ -581,6 +594,15 @@ function validateChat(d) {
   const alertChatId = document.getElementById('chat-alert-id');
   const alertDnChat = document.getElementById('chat-alert-dn');
   const alertEid = document.getElementById('chat-alert-eid');
+
+  // Gate: las inline alerts sólo aparecen si alguno de los campos de chat
+  // (chat-id, chat-dn, eid) fue tocado para el producto activo.
+  if (!hasAnyTouchedInProduct(activeProduct, ['chat-id', 'chat-dn', 'eid'])) {
+    alertChatId.style.display = 'none';
+    alertDnChat.style.display = 'none';
+    alertEid.style.display = 'none';
+    return;
+  }
 
   alertChatId.style.display = 'none';
   alertDnChat.style.display = 'none';
@@ -649,6 +671,7 @@ if (typeof document !== 'undefined') {
     document.getElementById('chat-alert-id').style.display = 'none';
     document.getElementById('chat-alert-dn').style.display = 'none';
     document.getElementById('chat-alert-eid').style.display = 'none';
+    resetTouched();
     missingPanelOpen = false;
     document.getElementById('missing-details-panel').classList.remove('visible');
     updateFormActionsState({});
@@ -680,7 +703,13 @@ if (typeof document !== 'undefined') {
       const el = document.getElementById(`input-${field}`);
       if (!el) return;
 
-      el.addEventListener('input', processData);
+      el.addEventListener('input', () => {
+        // Marca el campo como tocado en la PRIMERA pulsación (no en blur) para
+        // que las inline alerts aparezcan incluso si el operador nunca sale
+        // del input. Idempotente: el guard evita reasignaciones innecesarias.
+        if (!isTouched(field)) markTouched(field);
+        processData();
+      });
 
       // Doble clic → pegar del portapapeles (nueva línea si ya hay contenido)
       // Usamos mousedown para evitar interferencia con la selección nativa de dblclick
