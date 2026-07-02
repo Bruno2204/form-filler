@@ -120,8 +120,11 @@ function parseCacField(text) {
   if (lines.length >= 2) res.cpCAC = lines[1];
   if (lines.length >= 3) {
     let date = lines[2];
+    // Year is completed at parse time from the system clock.
+    // Tests must fake the system clock (vi.setSystemTime) for determinism
+    // — see tests/parser.test.js (CURRENT_YEAR / beforeEach fake timers).
     if (/^\d{1,2}\/\d{1,2}$/.test(date)) {
-      date += '/2026';
+      date += '/' + new Date().getFullYear();
     }
     res.fvc = date;
   }
