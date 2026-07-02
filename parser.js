@@ -247,3 +247,17 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     esCAC: !!nombreCAV
   };
 }
+
+// Conditional exports for Node.js / CJS testing (browser-safe, no behavior change)
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    cleanPhone,
+    isEsimProduct,
+    formatDnChat,
+    parseChatField,
+    parseLineaField,
+    parseCacField,
+    parseDireccionField,
+    parseData,
+  };
+}
