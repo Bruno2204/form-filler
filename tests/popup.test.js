@@ -159,30 +159,30 @@ describe('isPhoneFieldInvalid', () => {
 
 describe('getCleanProductName', () => {
   it.each([
-    ['POS_ESIM', 'Porta Pospago Esim'],
-    ['POS_CAC', 'Porta Pospago'],
-    ['LN_ESIM', 'Linea Nueva Esim'],
-    ['LN_CAC', 'Linea Nueva'],
-    ['PRE_ESIM', 'Línea Nueva Prepago Esim'],
-    ['PREPAGO', 'Porta Prepago'],
-    ['ADIC_CAC', 'Adición'],
+    ['POS_ESIM', 'PORTABILIDAD POSPAGO E-SIM'],
+    ['POS_CAC', 'PORTABILIDAD POSPAGO'],
+    ['LN_ESIM', 'LÍNEA NUEVA E-SIM'],
+    ['LN_CAC', 'LÍNEA NUEVA'],
+    ['PRE_ESIM', 'LÍNEA NUEVA PREPAGO'],
+    ['PREPAGO', 'PORTABILIDAD PREPAGO'],
+    ['ADIC_CAC', 'ADICIÓN'],
   ])('maps %s to %s', (key, expected) => {
     expect(getCleanProductName(key)).toBe(expected);
   });
 
-  it('returns the default "Porta Pospago" for unknown product keys', () => {
-    expect(getCleanProductName('UNKNOWN_PRODUCT')).toBe('Porta Pospago');
-    expect(getCleanProductName('')).toBe('Porta Pospago');
-    expect(getCleanProductName(undefined)).toBe('Porta Pospago');
+  it('returns the default "PORTABILIDAD POSPAGO" for unknown product keys', () => {
+    expect(getCleanProductName('UNKNOWN_PRODUCT')).toBe('PORTABILIDAD POSPAGO');
+    expect(getCleanProductName('')).toBe('PORTABILIDAD POSPAGO');
+    expect(getCleanProductName(undefined)).toBe('PORTABILIDAD POSPAGO');
   });
 
   it('ignores the esEsim argument (signature accepts but does not use it)', () => {
     // The function signature is (productKey, esEsim) but the switch on
     // productKey alone determines the return. Document this contract.
-    expect(getCleanProductName('POS_ESIM', true)).toBe('Porta Pospago Esim');
-    expect(getCleanProductName('POS_ESIM', false)).toBe('Porta Pospago Esim');
-    expect(getCleanProductName('POS_CAC', true)).toBe('Porta Pospago');
-    expect(getCleanProductName('POS_CAC', false)).toBe('Porta Pospago');
+    expect(getCleanProductName('POS_ESIM', true)).toBe('PORTABILIDAD POSPAGO E-SIM');
+    expect(getCleanProductName('POS_ESIM', false)).toBe('PORTABILIDAD POSPAGO E-SIM');
+    expect(getCleanProductName('POS_CAC', true)).toBe('PORTABILIDAD POSPAGO');
+    expect(getCleanProductName('POS_CAC', false)).toBe('PORTABILIDAD POSPAGO');
   });
 });
 

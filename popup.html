@@ -1,13 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
   <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Form Filler</title>
     <!-- Importar tipografía moderna de Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --primary: #4285f4;
@@ -21,7 +23,9 @@
         --text-main: #202124;
         --text-secondary: #5f6368;
         --radius: 8px;
-        --font: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font:
+          'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Helvetica, Arial, sans-serif;
       }
 
       * {
@@ -57,8 +61,6 @@
       .action-section {
         flex-shrink: 0;
       }
-
-
 
       .products-grid {
         display: grid;
@@ -134,7 +136,7 @@
       }
 
       .input-row textarea,
-      .input-row input[type="text"] {
+      .input-row input[type='text'] {
         flex: 1;
         min-width: 0;
       }
@@ -173,7 +175,7 @@
       }
 
       .input-group textarea,
-      .input-group input[type="text"] {
+      .input-group input[type='text'] {
         font-family: var(--font);
         width: 100%;
         height: 75px;
@@ -188,13 +190,13 @@
       }
 
       .input-group textarea:focus,
-      .input-group input[type="text"]:focus {
+      .input-group input[type='text']:focus {
         border-color: var(--primary);
         background-color: #ffffff;
         box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
       }
 
-      .input-group input[type="text"] {
+      .input-group input[type='text'] {
         height: 32px;
         padding: 6px 8px;
       }
@@ -380,22 +382,36 @@
         text-align: center;
       }
 
-      #btn1 { background: #4285f4; }
-      #btn1:hover { background: #3367d6; }
-      #btn2 { background: #34a853; }
-      #btn2:hover { background: #2d8e47; }
-      #btn3 { background: #ea4335; }
-      #btn3:hover { background: #d63b2f; }
-      #btnClear { background: #757575; }
-      #btnClear:hover { background: #616161; }
+      #btn1 {
+        background: #4285f4;
+      }
+      #btn1:hover {
+        background: #3367d6;
+      }
+      #btn2 {
+        background: #34a853;
+      }
+      #btn2:hover {
+        background: #2d8e47;
+      }
+      #btn3 {
+        background: #ea4335;
+      }
+      #btn3:hover {
+        background: #d63b2f;
+      }
+      #btnClear {
+        background: #757575;
+      }
+      #btnClear:hover {
+        background: #616161;
+      }
 
       .btn-action:disabled {
         opacity: 0.4;
         cursor: not-allowed;
         pointer-events: none;
       }
-
-
 
       #status {
         margin-top: 8px;
@@ -411,7 +427,9 @@
   <body>
     <!-- Selector de Productos -->
     <div class="products-grid">
-      <button class="btn-product active" data-product="POS_ESIM">POS ESIM</button>
+      <button class="btn-product active" data-product="POS_ESIM">
+        POS ESIM
+      </button>
       <button class="btn-product" data-product="POS_CAC">POS CAC</button>
       <button class="btn-product" data-product="LN_ESIM">LN ESIM</button>
       <button class="btn-product" data-product="LN_CAC">LN CAC</button>
@@ -426,42 +444,89 @@
         <div class="input-group" id="group-plan">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"
+                />
+              </svg>
               Plan
             </label>
           </div>
           <div class="input-row">
-            <input type="text" id="input-plan" placeholder="Ej. Plan 5GB, Plan Anual...">
+            <input
+              type="text"
+              id="input-plan"
+              placeholder="Ej. Plan 5GB, Plan Anual..."
+            />
           </div>
         </div>
 
         <div class="input-group" id="group-linea">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"
+                />
+              </svg>
               Datos de Línea
             </label>
           </div>
           <div class="input-row">
-            <textarea id="input-linea" placeholder="Pega dn, nip, correo..."></textarea>
+            <textarea
+              id="input-linea"
+              placeholder="Pega dn, nip, correo..."
+            ></textarea>
           </div>
-          <div class="validation-alert" id="phone-alert-portar">⚠ El DN a portar debe tener exactamente 10 dígitos.</div>
-          <div class="validation-alert" id="phone-alert-adicional">⚠ El DN adicional debe tener exactamente 10 dígitos.</div>
-          <div class="validation-alert" id="phone-alert-contacto">⚠ El DN de contacto debe tener exactamente 10 dígitos.</div>
-          <div class="validation-alert" id="phone-alert-movistar">⚠ El DN Movistar debe tener exactamente 10 dígitos.</div>
-          <div class="validation-alert" id="phone-alert-same">⚠ El DN a portar y el DN adicional deben ser diferentes.</div>
+          <div class="validation-alert" id="phone-alert-portar">
+            ⚠ El DN a portar debe tener exactamente 10 dígitos.
+          </div>
+          <div class="validation-alert" id="phone-alert-adicional">
+            ⚠ El DN adicional debe tener exactamente 10 dígitos.
+          </div>
+          <div class="validation-alert" id="phone-alert-contacto">
+            ⚠ El DN de contacto debe tener exactamente 10 dígitos.
+          </div>
+          <div class="validation-alert" id="phone-alert-movistar">
+            ⚠ El DN Movistar debe tener exactamente 10 dígitos.
+          </div>
+          <div class="validation-alert" id="phone-alert-same">
+            ⚠ El DN a portar y el DN adicional deben ser diferentes.
+          </div>
         </div>
 
         <!-- 2. Datos de CURP / Personales -->
         <div class="input-group" id="group-curp">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-              Datos de CURP / Personales
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+                />
+              </svg>
+              Datos de CURP
             </label>
           </div>
           <div class="input-row">
-            <textarea id="input-curp" placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."></textarea>
+            <textarea
+              id="input-curp"
+              placeholder="Pega el bloque con nombre, curp, sexo, fecha nacim..."
+            ></textarea>
           </div>
         </div>
 
@@ -469,12 +534,24 @@
         <div class="input-group" id="group-direccion">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                />
+              </svg>
               Dirección de Facturación
             </label>
           </div>
           <div class="input-row">
-            <textarea id="input-direccion" placeholder="Pega la dirección de facturación..."></textarea>
+            <textarea
+              id="input-direccion"
+              placeholder="Pega la dirección de facturación..."
+            ></textarea>
           </div>
         </div>
 
@@ -482,52 +559,103 @@
         <div class="input-group" id="group-cac">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-5 14H4v-4h11v4zm0-5H4V9h11v4zm5 5h-4V9h4v9z"
+                />
+              </svg>
               Datos CAC
             </label>
           </div>
           <div class="input-row">
-            <textarea id="input-cac" class="textarea-compact" rows="3" placeholder="Pega CAC, C.P., FVC..."></textarea>
+            <textarea
+              id="input-cac"
+              class="textarea-compact"
+              rows="3"
+              placeholder="Pega CAC, C.P., FVC..."
+            ></textarea>
           </div>
         </div>
 
         <div class="input-group" id="group-chat-id">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7l-2 3v1h8v-1l-2-3h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 12H3V4h18v10z"
+                />
+              </svg>
               ID del Chat
             </label>
           </div>
           <div class="input-row">
-            <input type="text" id="input-chat-id" placeholder="ID del chat / lead">
+            <input
+              type="text"
+              id="input-chat-id"
+              placeholder="ID del chat / lead"
+            />
           </div>
-          <div class="validation-alert" id="chat-alert-id">⚠ El ID del chat debe tener exactamente 9 números.</div>
+          <div class="validation-alert" id="chat-alert-id">
+            ⚠ El ID del chat debe tener exactamente 9 números.
+          </div>
         </div>
 
         <div class="input-group" id="group-chat-dn">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"
+                />
+              </svg>
               DN de Chat
             </label>
           </div>
           <div class="input-row">
-            <input type="text" id="input-chat-dn" placeholder="+521234567890">
+            <input type="text" id="input-chat-dn" placeholder="+521234567890" />
           </div>
-          <div class="validation-alert" id="chat-alert-dn">⚠ El DN del chat debe empezar con "+".</div>
+          <div class="validation-alert" id="chat-alert-dn">
+            ⚠ El DN del chat debe empezar con "+".
+          </div>
         </div>
 
         <div class="input-group" id="group-eid">
           <div class="input-label-row">
             <label>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"
+                />
+              </svg>
               EID
             </label>
           </div>
           <div class="input-row">
-            <input type="text" id="input-eid" placeholder="12345 (solo ESIM)">
+            <input type="text" id="input-eid" placeholder="12345 (solo ESIM)" />
           </div>
-          <div class="validation-alert" id="chat-alert-eid">⚠ El EID debe tener exactamente 5 dígitos (solo ESIM).</div>
+          <div class="validation-alert" id="chat-alert-eid">
+            ⚠ El EID debe tener exactamente 5 dígitos (solo ESIM).
+          </div>
         </div>
       </div>
     </div>
@@ -536,9 +664,20 @@
     <div class="result-container">
       <div class="result-header">
         <div class="result-title-row">
-          <span class="result-title" id="result-title">Resultado Formateado</span>
-          <span class="missing-data-badge" id="missing-data-badge">Faltan datos</span>
-          <button type="button" class="btn-missing-info" id="btn-missing-info" title="Ver qué datos faltan">?</button>
+          <span class="result-title" id="result-title"
+            >Resultado Formateado</span
+          >
+          <span class="missing-data-badge" id="missing-data-badge"
+            >Faltan datos</span
+          >
+          <button
+            type="button"
+            class="btn-missing-info"
+            id="btn-missing-info"
+            title="Ver qué datos faltan"
+          >
+            ?
+          </button>
         </div>
         <button class="btn-copy" id="btnCopy">Copiar</button>
       </div>
@@ -546,7 +685,12 @@
         <div class="missing-details-title">Datos pendientes:</div>
         <ul id="missing-details-list"></ul>
       </div>
-      <textarea class="result-text" id="result-final" readonly placeholder="El resultado formateado aparecerá aquí..."></textarea>
+      <textarea
+        class="result-text"
+        id="result-final"
+        readonly
+        placeholder="El resultado formateado aparecerá aquí..."
+      ></textarea>
     </div>
 
     <!-- Botones de Acción para Rellenar Formulario -->
@@ -565,5 +709,4 @@
     <script src="parser.js"></script>
     <script src="popup.js"></script>
   </body>
-
 </html>

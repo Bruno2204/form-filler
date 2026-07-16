@@ -74,7 +74,12 @@
             data.producto === 'Linea Nueva Plan Anual' ||
             data.producto === 'Linea Nueva Esim' ||
             data.producto === 'Adición' ||
-            data.producto === 'Línea Nueva Prepago Esim';
+            data.producto === 'Línea Nueva Prepago Esim' ||
+            data.producto === 'LÍNEA NUEVA' ||
+            data.producto === 'LÍNEA NUEVA PLAN ANUAL' ||
+            data.producto === 'LÍNEA NUEVA E-SIM' ||
+            data.producto === 'ADICIÓN' ||
+            data.producto === 'LÍNEA NUEVA PREPAGO';
           const radios = item.querySelectorAll(SELECTORS.RADIO);
           for (const radio of radios) {
             const val = radio.getAttribute('data-value')?.toLowerCase() || '';
@@ -123,7 +128,9 @@
       // Dropdown de "Plan elegido"
       const isPrepago =
         data.producto === 'Porta Prepago' ||
-        data.producto === 'Línea Nueva Prepago Esim';
+        data.producto === 'Línea Nueva Prepago Esim' ||
+        data.producto === 'PORTABILIDAD PREPAGO' ||
+        data.producto === 'LÍNEA NUEVA PREPAGO';
       const planElegido = isPrepago ? 'Prepago' : data.plan;
 
       if (planElegido) {

@@ -72,13 +72,13 @@ Usado en `content.js` para seleccionar el radio **Producto**:
 
 | Clave | `data.producto` |
 |-------|-----------------|
-| `POS_ESIM` | `Porta Pospago Esim` |
-| `POS_CAC` | `Porta Pospago` |
-| `LN_ESIM` | `Linea Nueva Esim` |
-| `LN_CAC` | `Linea Nueva` |
-| `PRE_ESIM` | `Línea Nueva Prepago Esim` |
-| `PREPAGO` | `Porta Prepago` |
-| `ADIC_CAC` | `Adición` |
+| `POS_ESIM` | `PORTABILIDAD POSPAGO E-SIM` |
+| `POS_CAC` | `PORTABILIDAD POSPAGO` |
+| `LN_ESIM` | `LÍNEA NUEVA E-SIM` |
+| `LN_CAC` | `LÍNEA NUEVA` |
+| `PRE_ESIM` | `LÍNEA NUEVA PREPAGO` |
+| `PREPAGO` | `PORTABILIDAD PREPAGO` |
+| `ADIC_CAC` | `ADICIÓN` |
 
 **No cambiar estos strings** sin verificar que coinciden con los `data-value` del formulario real.
 

@@ -146,7 +146,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'genero',
     'fecha',
     'lugarNacimiento',
@@ -163,7 +162,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'genero',
     'fecha',
     'lugarNacimiento',
@@ -180,7 +178,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'dnContacto',
     'fecha',
     'genero',
@@ -197,7 +194,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'dnContacto',
     'fecha',
     'genero',
@@ -216,7 +212,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'dnContacto',
     'fecha',
     'genero',
@@ -232,7 +227,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'email',
     'nombres',
     'apellido1',
-    'apellido2',
     'genero',
     'fecha',
     'lugarNacimiento',
@@ -510,21 +504,21 @@ function updateFormActionsState(d) {
 function getCleanProductName(productKey, esEsim) {
   switch (productKey) {
     case 'ADIC_CAC':
-      return 'Adición';
+      return 'ADICIÓN';
     case 'PRE_ESIM':
-      return 'Línea Nueva Prepago Esim';
+      return 'LÍNEA NUEVA PREPAGO';
     case 'PREPAGO':
-      return 'Porta Prepago';
+      return 'PORTABILIDAD PREPAGO';
     case 'POS_ESIM':
-      return 'Porta Pospago Esim';
+      return 'PORTABILIDAD POSPAGO E-SIM';
     case 'POS_CAC':
-      return 'Porta Pospago';
+      return 'PORTABILIDAD POSPAGO';
     case 'LN_ESIM':
-      return 'Linea Nueva Esim';
+      return 'LÍNEA NUEVA E-SIM';
     case 'LN_CAC':
-      return 'Linea Nueva';
+      return 'LÍNEA NUEVA';
     default:
-      return 'Porta Pospago';
+      return 'PORTABILIDAD POSPAGO';
   }
 }
 
