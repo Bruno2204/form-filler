@@ -5,7 +5,7 @@
 (function () {
   const { SELECTORS } = window.__ff;
   const { setInput, findInputByLabel, selectDropdownOption } = window.__ff.helpers;
-  const { isLineaNueva, normalizeText } = window.__ff.utils;
+  const { normalizeText } = window.__ff.utils;
 
   window.__ff.fillPage1 = async function (data) {
     try {
@@ -56,11 +56,7 @@
         filled++;
       if (setInput(findInputByLabel('Fecha de nacimiento'), data.fecha))
         filled++;
-      if (
-        !isLineaNueva(data.producto) &&
-        setInput(findInputByLabel('CURP'), data.curp)
-      )
-        filled++;
+      if (setInput(findInputByLabel('CURP'), data.curp)) filled++;
       if (setInput(findInputByLabel('DN de contacto'), data.dn)) filled++;
       if (setInput(findInputByLabel('E-mail'), data.email)) filled++;
       if (setInput(findInputByLabel('id lead'), data.chatId)) filled++;

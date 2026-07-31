@@ -49,6 +49,7 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
+CURP: ${d.curp || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}
 
 CALLE: ${d.calle || ''}
@@ -68,6 +69,7 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
+CURP: ${d.curp || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}
 
 CALLE: ${d.calle || ''}
@@ -91,6 +93,7 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
+CURP: ${d.curp || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}`,
 
   PREPAGO: (d) => `PREPAGO

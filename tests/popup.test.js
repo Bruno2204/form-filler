@@ -628,6 +628,23 @@ describe('PRODUCT_TEMPLATES', () => {
       expect(result).not.toContain('CALLE:');
     });
 
+    it('LN_ESIM/LN_CAC/PRE_ESIM place CURP between SEXO and Estado de nacimiento', () => {
+      for (const productKey of ['LN_ESIM', 'LN_CAC', 'PRE_ESIM']) {
+        const result = PRODUCT_TEMPLATES[productKey](validData(productKey));
+        const sexoIdx = result.indexOf('SEXO:');
+        const curpIdx = result.indexOf('CURP:');
+        const estadoIdx = result.indexOf('Estado de nacimiento:');
+        expect(sexoIdx, `${productKey} should contain SEXO:`).toBeGreaterThan(-1);
+        expect(curpIdx, `${productKey} should contain CURP:`).toBeGreaterThan(-1);
+        expect(estadoIdx, `${productKey} should contain Estado de nacimiento:`).toBeGreaterThan(-1);
+        expect(
+          sexoIdx < curpIdx && curpIdx < estadoIdx,
+          `${productKey} should order: SEXO < CURP < Estado de nacimiento`
+        ).toBe(true);
+        expect(result).toContain('PEGJ900101HDFRRN09');
+      }
+    });
+
     it('PREPAGO contains dnPortar and dnAdicional (no direccion block)', () => {
       const result = PRODUCT_TEMPLATES.PREPAGO(validData('PREPAGO'));
       expect(result).toContain('5511111111'); // dnPortar
