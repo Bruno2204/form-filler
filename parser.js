@@ -29,10 +29,7 @@ function formatDnChat(phoneStr) {
 
 // Procesa el textarea de chat: ID, DN (+52), EID (solo ESIM, 5 dígitos)
 function parseChatField(text, productKey) {
-  const lines = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const res = { chatId: '', dnChat: '', eid: '', eidValid: true };
   if (lines.length >= 1) res.chatId = lines[0];
   if (lines.length >= 2) res.dnChat = formatDnChat(lines[1]);
@@ -46,9 +43,8 @@ function parseChatField(text, productKey) {
 
 // Procesa de forma inteligente el textarea "Datos de Línea" sin requerir etiquetas
 function parseLineaField(text, productKey) {
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
+  const lines = text.split('\n')
+    .map(line => line.trim())
     .filter(Boolean);
 
   let emails = [];
@@ -72,13 +68,13 @@ function parseLineaField(text, productKey) {
       return;
     }
 
-    // 3. Identificar si es un número de teléfono móvil / fijo (habitualmente entre 8 y 15 dígitos, sin letras)
-    if (!/[a-zA-Z]/.test(line) && cleaned.length >= 8 && cleaned.length <= 15) {
+    // 3. Identificar si es un número de teléfono móvil / fijo (habitualmente entre 8 y 15 dígitos)
+    if (cleaned.length >= 8 && cleaned.length <= 15 && /^\d+$/.test(cleaned)) {
       phones.push(cleaned);
       return;
     }
 
-    // 4. Si no coincide, es texto descriptivo (Plan, Nombre de titular, INE, etc.)
+    // 4. Si no coincide, es texto descriptivo (Plan, Nombre de titular, etc.)
     otherTexts.push(line);
   });
 
@@ -90,14 +86,8 @@ function parseLineaField(text, productKey) {
     dnAdicional: '',
     dnContacto: '',
     dnMovistar: '',
-    nombreTitular: '',
-    claveElector: '',
+    nombreTitular: ''
   };
-
-  // Clave de elector para Línea Nueva pospago (última línea de texto libre)
-  if (['LN_ESIM', 'LN_CAC'].includes(productKey) && otherTexts.length > 0) {
-    res.claveElector = otherTexts[otherTexts.length - 1];
-  }
 
   // Nombre del titular para Adición (si queda texto libre)
   if (productKey === 'ADIC_CAC' && otherTexts.length > 0) {
@@ -124,10 +114,7 @@ function parseLineaField(text, productKey) {
 
 // Procesa el textarea "Datos CAC" sin etiquetas
 function parseCacField(text) {
-  const lines = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   let res = { nombreCAV: '', cpCAC: '', fvc: '' };
   if (lines.length >= 1) res.nombreCAV = lines[0];
   if (lines.length >= 2) res.cpCAC = lines[1];
@@ -146,10 +133,7 @@ function parseCacField(text) {
 
 // Procesa el textarea "Datos de Dirección" sin etiquetas
 function parseDireccionField(text) {
-  const lines = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   let res = { calle: '', numExt: '', numInt: '', cpDireccion: '', colonia: '' };
   if (lines.length === 0) return res;
   if (lines.length === 1) {
@@ -170,7 +154,7 @@ function parseDireccionField(text) {
   res.calle = lines[0];
   res.colonia = lines[lines.length - 1];
   res.cpDireccion = lines[lines.length - 2];
-
+  
   const middle = lines.slice(1, lines.length - 2);
   if (middle.length >= 1) res.numExt = middle[0];
   if (middle.length >= 2) res.numInt = middle.slice(1).join(' ');
@@ -178,32 +162,20 @@ function parseDireccionField(text) {
 }
 
 // Función principal de parseo general combinando todos los campos
-function parseData(
-  raw,
-  productKey,
-  lineaRawText = '',
-  cacRawText = '',
-  direccionRawText = '',
-  fieldOverrides = {},
-) {
+function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccionRawText = '', fieldOverrides = {}) {
   const {
     plan: planOverride = '',
     chatId: chatIdOverride = '',
     dnChat: dnChatOverride = '',
-    eid: eidOverride = '',
+    eid: eidOverride = ''
   } = fieldOverrides;
   const get = (key) => {
-    const match = raw.match(
-      new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'),
-    );
+    const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
     return match ? match[1].trim() : '';
   };
 
   // 1. Obtener la extracción heurística de la sección de línea
-  const lineaData = parseLineaField(
-    lineaRawText || get('input-linea') || raw,
-    productKey,
-  );
+  const lineaData = parseLineaField(lineaRawText || get('input-linea') || raw, productKey);
   const cacData = parseCacField(cacRawText || '');
   const direccionData = parseDireccionField(direccionRawText || '');
   const chatData = parseChatField('', productKey);
@@ -212,7 +184,7 @@ function parseData(
   const nombres = get('Nombre\\(s\\)') || get('Nombre');
   const apellido1 = get('Primer apellido') || get('Primer_apellido');
   const apellido2 = get('Segundo apellido') || get('Segundo_apellido');
-
+  
   let nombreCompleto = get('Nombre Completo') || get('Nombre_Completo');
   if (!nombreCompleto && nombres) {
     nombreCompleto = [nombres, apellido1, apellido2].filter(Boolean).join(' ');
@@ -220,71 +192,29 @@ function parseData(
   nombreCompleto = nombreCompleto.toUpperCase();
 
   const curp = (get('CURP VERIFICADO') || get('CURP')).toUpperCase();
-  const claveElectorRaw =
-    lineaData.claveElector ||
-    get('CLAVE DE ELECTOR') ||
-    get('CLAVE ELECTOR') ||
-    get('INE');
-  const claveElector = claveElectorRaw
-    ? claveElectorRaw
-        .replace(/^(?:INE|CLAVE(?: DE)? ELECTOR)[ :\t]*/i, '')
-        .trim()
-        .toUpperCase()
-    : '';
-  const fecha =
-    get('Fecha de nacimiento') || get('FECHA NACIM') || get('FECHA_NACIMIENTO');
+  const fecha = get('Fecha de nacimiento') || get('FECHA NACIM') || get('FECHA_NACIMIENTO');
   const genero = get('Sexo') || get('SEXO') || get('Género') || get('Genero');
-  const lugarNacimiento =
-    get('Entidad de nacimiento') ||
-    get('Estado de nacimiento') ||
-    get('ESTADO NACIM') ||
-    get('ESTADO_NACIMIENTO');
+  const lugarNacimiento = get('Entidad de nacimiento') || get('Estado de nacimiento') || get('ESTADO NACIM') || get('ESTADO_NACIMIENTO');
 
   const calle = direccionData.calle || get('CALLE');
-  const numExt =
-    direccionData.numExt ||
-    get('NUMERO EXTERIOR') ||
-    get('NÚMERO EXTERIOR') ||
-    get('NUM_EXT');
-  const numInt =
-    direccionData.numInt ||
-    get('NUMERO INTERIOR') ||
-    get('NÚMERO INTERIOR') ||
-    get('NUM_INT');
-  const cpDireccion =
-    direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL');
+  const numExt = direccionData.numExt || get('NUMERO EXTERIOR') || get('NÚMERO EXTERIOR') || get('NUM_EXT');
+  const numInt = direccionData.numInt || get('NUMERO INTERIOR') || get('NÚMERO INTERIOR') || get('NUM_INT');
+  const cpDireccion = direccionData.cpDireccion || get('CODIGO POSTAL') || get('CÓDIGO POSTAL');
   const colonia = direccionData.colonia || get('COLONIA');
 
-  const chatId =
-    chatIdOverride.trim() ||
-    chatData.chatId ||
-    get('ID LEAD') ||
-    get('ID') ||
-    get('CHAT ID') ||
-    get('ID CHAT') ||
-    get('CHAT_ID');
+  const chatId = chatIdOverride.trim() || chatData.chatId || get('ID LEAD') || get('ID') || get('CHAT ID') || get('ID CHAT') || get('CHAT_ID');
   const dnChat = dnChatOverride.trim()
     ? formatDnChat(dnChatOverride)
-    : chatData.dnChat ||
-      formatDnChat(get('DN CON EL QUE SE COMUNICA') || get('DN RESPOND') || '');
+    : (chatData.dnChat || formatDnChat(get('DN CON EL QUE SE COMUNICA') || get('DN RESPOND') || ''));
   let eid = eidOverride.trim()
     ? eidOverride.replace(/\D/g, '')
-    : chatData.eid || get('EID') || get('EQUIPO EID') || '';
-  const eidValid = eidOverride.trim()
-    ? /^\d{5}$/.test(eid)
-    : chatData.eid
-      ? chatData.eidValid
-      : /^\d{5}$/.test(eid);
+    : (chatData.eid || get('EID') || get('EQUIPO EID') || '');
+  const eidValid = eidOverride.trim() ? /^\d{5}$/.test(eid) : (chatData.eid ? chatData.eidValid : /^\d{5}$/.test(eid));
   const esEsim = isEsimProduct(productKey);
 
   const cpCAC = cacData.cpCAC || get('CP') || get('C\\.P\\.');
   const fvc = cacData.fvc || get('FVC') || get('FECHA VENTA');
-  const nombreCAV =
-    cacData.nombreCAV ||
-    get('CAC') ||
-    get('CAV') ||
-    get('Nombre CAV') ||
-    get('Nombre_CAV');
+  const nombreCAV = cacData.nombreCAV || get('CAC') || get('CAV') || get('Nombre CAV') || get('Nombre_CAV');
 
   return {
     nombres: nombres || lineaData.nombres || '',
@@ -304,7 +234,6 @@ function parseData(
     cpCAC,
     colonia,
     curp,
-    claveElector,
     fecha,
     genero,
     lugarNacimiento,
@@ -318,7 +247,7 @@ function parseData(
     nip: lineaData.nip || get('NIP') || '',
     nombreTitular: lineaData.nombreTitular || get('NOMBRE TITULAR') || '',
     esEsim,
-    esCAC: !!nombreCAV,
+    esCAC: !!nombreCAV
   };
 }
 

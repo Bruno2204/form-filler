@@ -49,13 +49,11 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
-CURP: ${d.curp || ''}
-Clave Elector: ${d.claveElector || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}
 
 CALLE: ${d.calle || ''}
 NUMERO EXTERIOR: ${d.numExt || ''}
-NÚMERO INTERIOR: ${d.numInt || ''}
+NÚMERO INTERIOR (en caso de tener): ${d.numInt || ''}
 CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
@@ -70,13 +68,11 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
-CURP: ${d.curp || ''}
-Clave Elector: ${d.claveElector || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}
 
 CALLE: ${d.calle || ''}
 NUMERO EXTERIOR: ${d.numExt || ''}
-NÚMERO INTERIOR: ${d.numInt || ''}
+NÚMERO INTERIOR (en caso de tener): ${d.numInt || ''}
 CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}
 
@@ -95,7 +91,6 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 DN CONTACTO: ${d.dnContacto || ''}
 FECHA NACIM: ${d.fecha || ''}
 SEXO: ${d.genero || ''}
-CURP: ${d.curp || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}`,
 
   PREPAGO: (d) => `PREPAGO
@@ -138,16 +133,7 @@ const PRODUCT_FIELDS = {
   ADIC_CAC: ['plan', 'linea', 'cac', 'chat-id', 'chat-dn'],
 };
 
-const ALL_INPUT_FIELDS = [
-  'plan',
-  'linea',
-  'curp',
-  'direccion',
-  'cac',
-  'chat-id',
-  'chat-dn',
-  'eid',
-];
+const ALL_INPUT_FIELDS = ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn', 'eid'];
 
 const PHONE_FIELDS = ['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'];
 
@@ -196,8 +182,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fecha',
     'genero',
     'lugarNacimiento',
-    'curp',
-    'claveElector',
     'calle',
     'cpDireccion',
     'colonia',
@@ -214,8 +198,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fecha',
     'genero',
     'lugarNacimiento',
-    'curp',
-    'claveElector',
     'calle',
     'cpDireccion',
     'colonia',
@@ -234,7 +216,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fecha',
     'genero',
     'lugarNacimiento',
-    'curp',
     'chatId',
     'dnChat',
     'eid',
@@ -282,7 +263,6 @@ const FIELD_LABELS = {
   fecha: 'Fecha de nacimiento',
   lugarNacimiento: 'Estado de nacimiento',
   curp: 'CURP',
-  claveElector: 'Clave Elector',
   nombreCAV: 'CAC',
   cpCAC: 'C.P. CAC',
   fvc: 'FVC',
@@ -308,16 +288,12 @@ async function pasteIntoInput(inputEl) {
     inputEl.dispatchEvent(new Event('input', { bubbles: true }));
     // Feedback visual breve
     inputEl.style.backgroundColor = '#e6f4ea';
-    setTimeout(() => {
-      inputEl.style.backgroundColor = '';
-    }, 500);
+    setTimeout(() => { inputEl.style.backgroundColor = ''; }, 500);
   } catch (err) {
     console.error('Clipboard read failed:', err);
     const status = document.getElementById('status');
     status.textContent = '⚠ No se pudo leer el portapapeles.';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
+    setTimeout(() => { status.textContent = ''; }, 3000);
   }
 }
 
@@ -398,29 +374,15 @@ function processData() {
   const parsed = parseData(
     combinedText,
     activeProduct,
-    document.getElementById('input-linea')
-      ? document.getElementById('input-linea').value
-      : '',
-    document.getElementById('input-cac')
-      ? document.getElementById('input-cac').value
-      : '',
-    document.getElementById('input-direccion')
-      ? document.getElementById('input-direccion').value
-      : '',
+    document.getElementById('input-linea') ? document.getElementById('input-linea').value : '',
+    document.getElementById('input-cac') ? document.getElementById('input-cac').value : '',
+    document.getElementById('input-direccion') ? document.getElementById('input-direccion').value : '',
     {
-      plan: document.getElementById('input-plan')
-        ? document.getElementById('input-plan').value
-        : '',
-      chatId: document.getElementById('input-chat-id')
-        ? document.getElementById('input-chat-id').value
-        : '',
-      dnChat: document.getElementById('input-chat-dn')
-        ? document.getElementById('input-chat-dn').value
-        : '',
-      eid: document.getElementById('input-eid')
-        ? document.getElementById('input-eid').value
-        : '',
-    },
+      plan: document.getElementById('input-plan') ? document.getElementById('input-plan').value : '',
+      chatId: document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value : '',
+      dnChat: document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value : '',
+      eid: document.getElementById('input-eid') ? document.getElementById('input-eid').value : ''
+    }
   );
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
@@ -458,18 +420,15 @@ function validateRequiredData(d, productKey) {
       return;
     }
     if (field === 'chatId') {
-      if (isFieldEmpty(d[field]) || !/^\d{9}$/.test(String(d[field]).trim()))
-        missing.push(field);
+      if (isFieldEmpty(d[field]) || !/^\d{9}$/.test(String(d[field]).trim())) missing.push(field);
       return;
     }
     if (field === 'dnChat') {
-      if (isFieldEmpty(d[field]) || !String(d[field]).trim().startsWith('+'))
-        missing.push(field);
+      if (isFieldEmpty(d[field]) || !String(d[field]).trim().startsWith('+')) missing.push(field);
       return;
     }
     if (field === 'email') {
-      if (isFieldEmpty(d[field]) || String(d[field]).trim().endsWith('...'))
-        missing.push(field);
+      if (isFieldEmpty(d[field]) || String(d[field]).trim().endsWith('...')) missing.push(field);
       return;
     }
     if (isFieldEmpty(d[field]) || isPhoneFieldInvalid(field, d[field])) {
@@ -490,25 +449,13 @@ function getMissingFieldLabel(field, d) {
   if (field === 'dnSame') return FIELD_LABELS.dnSame;
   const label = FIELD_LABELS[field] || field;
 
-  if (
-    field === 'chatId' &&
-    !isFieldEmpty(d[field]) &&
-    !/^\d{9}$/.test(String(d[field]).trim())
-  ) {
+  if (field === 'chatId' && !isFieldEmpty(d[field]) && !/^\d{9}$/.test(String(d[field]).trim())) {
     return `${label} (debe tener exactamente 9 números)`;
   }
-  if (
-    field === 'dnChat' &&
-    !isFieldEmpty(d[field]) &&
-    !String(d[field]).trim().startsWith('+')
-  ) {
+  if (field === 'dnChat' && !isFieldEmpty(d[field]) && !String(d[field]).trim().startsWith('+')) {
     return `${label} (debe empezar con "+")`;
   }
-  if (
-    field === 'email' &&
-    !isFieldEmpty(d[field]) &&
-    String(d[field]).trim().endsWith('...')
-  ) {
+  if (field === 'email' && !isFieldEmpty(d[field]) && String(d[field]).trim().endsWith('...')) {
     return `${label} (no debe terminar en "...")`;
   }
 
@@ -655,15 +602,9 @@ function validateChat(d) {
   alertDnChat.style.display = 'none';
   alertEid.style.display = 'none';
 
-  const chatIdVal = document.getElementById('input-chat-id')
-    ? document.getElementById('input-chat-id').value.trim()
-    : '';
-  const chatDnVal = document.getElementById('input-chat-dn')
-    ? document.getElementById('input-chat-dn').value.trim()
-    : '';
-  const eidVal = document.getElementById('input-eid')
-    ? document.getElementById('input-eid').value.trim()
-    : '';
+  const chatIdVal = document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value.trim() : '';
+  const chatDnVal = document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value.trim() : '';
+  const eidVal = document.getElementById('input-eid') ? document.getElementById('input-eid').value.trim() : '';
 
   if (!chatIdVal && !chatDnVal && !eidVal) return;
 
@@ -671,16 +612,14 @@ function validateChat(d) {
   const isDnChatValid = chatDnVal.startsWith('+');
 
   if (chatIdVal && !isChatIdValid) {
-    alertChatId.textContent =
-      '⚠ El ID del chat debe tener exactamente 9 números.';
+    alertChatId.textContent = '⚠ El ID del chat debe tener exactamente 9 números.';
     alertChatId.style.display = 'block';
   }
   if (chatDnVal && !isDnChatValid) {
     alertDnChat.textContent = '⚠ El DN del chat debe empezar con "+".';
     alertDnChat.style.display = 'block';
   }
-  if (d.esEsim && eidVal && (!d.eid || !d.eidValid))
-    alertEid.style.display = 'block';
+  if (d.esEsim && eidVal && (!d.eid || !d.eidValid)) alertEid.style.display = 'block';
 }
 
 // Browser-only glue: registers DOM event listeners at module load.
@@ -728,9 +667,7 @@ if (typeof document !== 'undefined') {
     document.getElementById('chat-alert-eid').style.display = 'none';
     resetTouched();
     missingPanelOpen = false;
-    document
-      .getElementById('missing-details-panel')
-      .classList.remove('visible');
+    document.getElementById('missing-details-panel').classList.remove('visible');
     updateFormActionsState({});
     document.getElementById('status').textContent = '🧹 Datos borrados.';
     setTimeout(() => {
@@ -811,29 +748,15 @@ function getAccumulatedData() {
   const parsed = parseData(
     combinedText,
     activeProduct,
-    document.getElementById('input-linea')
-      ? document.getElementById('input-linea').value
-      : '',
-    document.getElementById('input-cac')
-      ? document.getElementById('input-cac').value
-      : '',
-    document.getElementById('input-direccion')
-      ? document.getElementById('input-direccion').value
-      : '',
+    document.getElementById('input-linea') ? document.getElementById('input-linea').value : '',
+    document.getElementById('input-cac') ? document.getElementById('input-cac').value : '',
+    document.getElementById('input-direccion') ? document.getElementById('input-direccion').value : '',
     {
-      plan: document.getElementById('input-plan')
-        ? document.getElementById('input-plan').value
-        : '',
-      chatId: document.getElementById('input-chat-id')
-        ? document.getElementById('input-chat-id').value
-        : '',
-      dnChat: document.getElementById('input-chat-dn')
-        ? document.getElementById('input-chat-dn').value
-        : '',
-      eid: document.getElementById('input-eid')
-        ? document.getElementById('input-eid').value
-        : '',
-    },
+      plan: document.getElementById('input-plan') ? document.getElementById('input-plan').value : '',
+      chatId: document.getElementById('input-chat-id') ? document.getElementById('input-chat-id').value : '',
+      dnChat: document.getElementById('input-chat-dn') ? document.getElementById('input-chat-dn').value : '',
+      eid: document.getElementById('input-eid') ? document.getElementById('input-eid').value : ''
+    }
   );
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;

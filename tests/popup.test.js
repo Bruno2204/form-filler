@@ -39,7 +39,6 @@ function validData(productKey, overrides = {}) {
     fecha: '01/01/1990',
     lugarNacimiento: 'CDMX',
     curp: 'PEGJ900101HDFRRN09',
-    claveElector: 'HOMR80010115H100',
     chatId: '123456789',
     dnChat: '+525512345678',
     dnPortar: '5511111111',
@@ -136,9 +135,9 @@ describe('isPhoneFieldInvalid', () => {
     // The function strips non-digits before checking length, so a 10-digit
     // string with dashes is actually valid. We assert cases where stripping
     // leaves a non-10 length, plus the explicit "non-digit" intent.
-    expect(isPhoneFieldInvalid('dnPortar', '55-123-4567')).toBe(true); // 9 digits after strip
-    expect(isPhoneFieldInvalid('dnPortar', '55i1234567')).toBe(true); // 9 digits after strip
-    expect(isPhoneFieldInvalid('dnPortar', 'abc123456')).toBe(true); // 6 digits after strip
+    expect(isPhoneFieldInvalid('dnPortar', '55-123-4567')).toBe(true);   // 9 digits after strip
+    expect(isPhoneFieldInvalid('dnPortar', '55i1234567')).toBe(true);    // 9 digits after strip
+    expect(isPhoneFieldInvalid('dnPortar', 'abc123456')).toBe(true);     // 6 digits after strip
   });
 
   it('returns false for 10-digit value with formatting characters', () => {
@@ -180,12 +179,8 @@ describe('getCleanProductName', () => {
   it('ignores the esEsim argument (signature accepts but does not use it)', () => {
     // The function signature is (productKey, esEsim) but the switch on
     // productKey alone determines the return. Document this contract.
-    expect(getCleanProductName('POS_ESIM', true)).toBe(
-      'PORTABILIDAD POSPAGO E-SIM',
-    );
-    expect(getCleanProductName('POS_ESIM', false)).toBe(
-      'PORTABILIDAD POSPAGO E-SIM',
-    );
+    expect(getCleanProductName('POS_ESIM', true)).toBe('PORTABILIDAD POSPAGO E-SIM');
+    expect(getCleanProductName('POS_ESIM', false)).toBe('PORTABILIDAD POSPAGO E-SIM');
     expect(getCleanProductName('POS_CAC', true)).toBe('PORTABILIDAD POSPAGO');
     expect(getCleanProductName('POS_CAC', false)).toBe('PORTABILIDAD POSPAGO');
   });
@@ -212,15 +207,9 @@ describe('constants structure', () => {
         }
       }
       for (const field of allRequired) {
-        expect(
-          FIELD_LABELS,
-          `FIELD_LABELS missing entry for "${field}"`,
-        ).toHaveProperty(field);
+        expect(FIELD_LABELS, `FIELD_LABELS missing entry for "${field}"`).toHaveProperty(field);
         expect(typeof FIELD_LABELS[field]).toBe('string');
-        expect(
-          FIELD_LABELS[field].length,
-          `FIELD_LABELS["${field}"] is empty`,
-        ).toBeGreaterThan(0);
+        expect(FIELD_LABELS[field].length, `FIELD_LABELS["${field}"] is empty`).toBeGreaterThan(0);
       }
     });
   });
@@ -231,15 +220,7 @@ describe('constants structure', () => {
     });
 
     it('contains every product key (POS_ESIM, POS_CAC, LN_ESIM, LN_CAC, PRE_ESIM, PREPAGO, ADIC_CAC)', () => {
-      const expected = [
-        'POS_ESIM',
-        'POS_CAC',
-        'LN_ESIM',
-        'LN_CAC',
-        'PRE_ESIM',
-        'PREPAGO',
-        'ADIC_CAC',
-      ];
+      const expected = ['POS_ESIM', 'POS_CAC', 'LN_ESIM', 'LN_CAC', 'PRE_ESIM', 'PREPAGO', 'ADIC_CAC'];
       for (const key of expected) {
         expect(PRODUCT_FIELDS).toHaveProperty(key);
         expect(Array.isArray(PRODUCT_FIELDS[key])).toBe(true);
@@ -251,10 +232,7 @@ describe('constants structure', () => {
       const allSet = new Set(ALL_INPUT_FIELDS);
       for (const product of Object.keys(PRODUCT_FIELDS)) {
         for (const field of PRODUCT_FIELDS[product]) {
-          expect(
-            allSet.has(field),
-            `${product} has field "${field}" not in ALL_INPUT_FIELDS`,
-          ).toBe(true);
+          expect(allSet.has(field), `${product} has field "${field}" not in ALL_INPUT_FIELDS`).toBe(true);
         }
       }
     });
@@ -263,7 +241,7 @@ describe('constants structure', () => {
   describe('PRODUCT_REQUIRED_FIELDS', () => {
     it('has the same 7 product keys as PRODUCT_FIELDS', () => {
       expect(Object.keys(PRODUCT_REQUIRED_FIELDS).sort()).toEqual(
-        Object.keys(PRODUCT_FIELDS).sort(),
+        Object.keys(PRODUCT_FIELDS).sort()
       );
     });
 
@@ -277,14 +255,8 @@ describe('constants structure', () => {
       }
 
       for (const key of nonPortability) {
-        expect(
-          PRODUCT_REQUIRED_FIELDS[key],
-          `${key} should NOT require dnPortar`,
-        ).not.toContain('dnPortar');
-        expect(
-          PRODUCT_REQUIRED_FIELDS[key],
-          `${key} should NOT require dnAdicional`,
-        ).not.toContain('dnAdicional');
+        expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should NOT require dnPortar`).not.toContain('dnPortar');
+        expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should NOT require dnAdicional`).not.toContain('dnAdicional');
       }
     });
 
@@ -297,16 +269,10 @@ describe('constants structure', () => {
       const withoutEid = ['PREPAGO', 'ADIC_CAC'];
 
       for (const key of withEid) {
-        expect(
-          PRODUCT_REQUIRED_FIELDS[key],
-          `${key} should list eid`,
-        ).toContain('eid');
+        expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should list eid`).toContain('eid');
       }
       for (const key of withoutEid) {
-        expect(
-          PRODUCT_REQUIRED_FIELDS[key],
-          `${key} should NOT list eid`,
-        ).not.toContain('eid');
+        expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should NOT list eid`).not.toContain('eid');
       }
     });
 
@@ -314,10 +280,7 @@ describe('constants structure', () => {
       // This is the reverse-direction check on the FIELD_LABELS invariant.
       for (const product of Object.keys(PRODUCT_REQUIRED_FIELDS)) {
         for (const field of PRODUCT_REQUIRED_FIELDS[product]) {
-          expect(
-            FIELD_LABELS,
-            `${product} requires "${field}" but no label exists`,
-          ).toHaveProperty(field);
+          expect(FIELD_LABELS, `${product} requires "${field}" but no label exists`).toHaveProperty(field);
         }
       }
     });
@@ -330,12 +293,7 @@ describe('constants structure', () => {
 
     it('contains dnPortar, dnAdicional, dnContacto, dnMovistar', () => {
       expect(PHONE_FIELDS).toEqual(
-        expect.arrayContaining([
-          'dnPortar',
-          'dnAdicional',
-          'dnContacto',
-          'dnMovistar',
-        ]),
+        expect.arrayContaining(['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'])
       );
     });
   });
@@ -343,16 +301,7 @@ describe('constants structure', () => {
   describe('ALL_INPUT_FIELDS', () => {
     it('contains all UI input groups (plan, linea, curp, direccion, cac, chat-id, chat-dn, eid)', () => {
       expect(ALL_INPUT_FIELDS).toEqual(
-        expect.arrayContaining([
-          'plan',
-          'linea',
-          'curp',
-          'direccion',
-          'cac',
-          'chat-id',
-          'chat-dn',
-          'eid',
-        ]),
+        expect.arrayContaining(['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn', 'eid'])
       );
     });
   });
@@ -370,14 +319,11 @@ describe('validateRequiredData', () => {
       'PRE_ESIM',
       'PREPAGO',
       'ADIC_CAC',
-    ])(
-      '%s with full fixture returns { valid: true, missing: [] }',
-      (productKey) => {
-        const result = validateRequiredData(validData(productKey), productKey);
-        expect(result.valid).toBe(true);
-        expect(result.missing).toEqual([]);
-      },
-    );
+    ])('%s with full fixture returns { valid: true, missing: [] }', (productKey) => {
+      const result = validateRequiredData(validData(productKey), productKey);
+      expect(result.valid).toBe(true);
+      expect(result.missing).toEqual([]);
+    });
   });
 
   describe('dnSame rule (3.2)', () => {
@@ -576,9 +522,7 @@ describe('getMissingFieldLabel', () => {
   it('chatId non-empty + wrong format → appends (debe tener exactamente 9 números)', () => {
     const d = { chatId: '12345' }; // 5 digits, non-empty
     const label = getMissingFieldLabel('chatId', d);
-    expect(label).toBe(
-      `${FIELD_LABELS.chatId} (debe tener exactamente 9 números)`,
-    );
+    expect(label).toBe(`${FIELD_LABELS.chatId} (debe tener exactamente 9 números)`);
   });
 
   it('chatId empty → returns plain label (no contextual hint)', () => {
@@ -638,9 +582,7 @@ describe('getMissingFieldLabel', () => {
 
   it('unknown field returns the field name itself (no FIELD_LABELS entry)', () => {
     expect(getMissingFieldLabel('xyz', {})).toBe('xyz');
-    expect(
-      getMissingFieldLabel('notARealField', { notARealField: 'foo' }),
-    ).toBe('notARealField');
+    expect(getMissingFieldLabel('notARealField', { notARealField: 'foo' })).toBe('notARealField');
   });
 });
 
@@ -663,36 +605,27 @@ describe('PRODUCT_TEMPLATES', () => {
       expect(result).toContain('06000'); // cpCAC
     });
 
-    it('LN_ESIM contains dnContacto, direccion components, CURP, and INE after CURP', () => {
+    it('LN_ESIM contains dnContacto + direccion components (calle, cpDireccion, colonia)', () => {
       const result = PRODUCT_TEMPLATES.LN_ESIM(validData('LN_ESIM'));
       expect(result).toContain('5533333333'); // dnContacto
       expect(result).toContain('Av Reforma 100'); // calle
       expect(result).toContain('06600'); // cpDireccion
       expect(result).toContain('Juárez'); // colonia
-      expect(result).toContain(
-        'SEXO: M\nCURP: PEGJ900101HDFRRN09\nINE: HOMR80010115H100\nEstado de nacimiento: CDMX',
-      );
     });
 
-    it('LN_CAC contains dnContacto, direccion components, CURP, and INE after CURP', () => {
+    it('LN_CAC contains dnContacto + direccion components', () => {
       const result = PRODUCT_TEMPLATES.LN_CAC(validData('LN_CAC'));
       expect(result).toContain('5533333333'); // dnContacto
       expect(result).toContain('Av Reforma 100'); // calle
       expect(result).toContain('06600'); // cpDireccion
       expect(result).toContain('Juárez'); // colonia
-      expect(result).toContain(
-        'SEXO: M\nCURP: PEGJ900101HDFRRN09\nINE: HOMR80010115H100\nEstado de nacimiento: CDMX',
-      );
     });
 
-    it('PRE_ESIM contains dnContacto, email, and CURP between SEXO and Estado de nacimiento (no address block)', () => {
+    it('PRE_ESIM contains dnContacto and email (no address block)', () => {
       const result = PRODUCT_TEMPLATES.PRE_ESIM(validData('PRE_ESIM'));
       expect(result).toContain('5533333333'); // dnContacto
       expect(result).toContain('user@example.com');
       expect(result).not.toContain('CALLE:');
-      expect(result).toContain(
-        'SEXO: M\nCURP: PEGJ900101HDFRRN09\nEstado de nacimiento: CDMX',
-      );
     });
 
     it('PREPAGO contains dnPortar and dnAdicional (no direccion block)', () => {
@@ -731,7 +664,7 @@ describe('PRODUCT_TEMPLATES', () => {
         const nonEmptyLines = result.split('\n').filter((l) => l.length > 0);
         expect(
           nonEmptyLines.length,
-          `${productKey} should produce multiple non-empty lines (got ${nonEmptyLines.length})`,
+          `${productKey} should produce multiple non-empty lines (got ${nonEmptyLines.length})`
         ).toBeGreaterThan(3);
       }
     });
@@ -838,9 +771,7 @@ describe('touched-field state tracking', () => {
   describe('hasAnyTouchedInProduct (4.5)', () => {
     it('returns false when no relevant field is touched', () => {
       expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
-      expect(
-        hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid']),
-      ).toBe(false);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(false);
     });
 
     it('returns true when at least one field in relevantFields is touched', () => {
@@ -850,9 +781,7 @@ describe('touched-field state tracking', () => {
 
     it('returns true when only one of several relevant fields is touched', () => {
       markTouched('chat-id');
-      expect(
-        hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid']),
-      ).toBe(true);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(true);
     });
 
     it('ignores touched fields outside the relevantFields list', () => {
@@ -909,9 +838,7 @@ describe('touched-field state tracking', () => {
       expect(isTouched('chat-id')).toBe(false);
       expect(isTouched('plan')).toBe(false);
       expect(hasAnyTouchedInProduct('POS_ESIM', ['linea'])).toBe(false);
-      expect(
-        hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid']),
-      ).toBe(false);
+      expect(hasAnyTouchedInProduct('POS_ESIM', ['chat-id', 'chat-dn', 'eid'])).toBe(false);
     });
   });
 });
