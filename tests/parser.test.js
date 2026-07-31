@@ -66,9 +66,12 @@ describe('isEsimProduct', () => {
     expect(isEsimProduct(key)).toBe(true);
   });
 
-  it.each(['POS_CAC', 'PREPAGO', 'LN_CAC', 'ADIC_CAC'])('returns false for %s', (key) => {
-    expect(isEsimProduct(key)).toBe(false);
-  });
+  it.each(['POS_CAC', 'PREPAGO', 'LN_CAC', 'ADIC_CAC'])(
+    'returns false for %s',
+    (key) => {
+      expect(isEsimProduct(key)).toBe(false);
+    },
+  );
 });
 
 describe('formatDnChat', () => {
@@ -164,7 +167,10 @@ describe('parseChatField', () => {
   });
 
   it('strips non-digits from EID line', () => {
-    const result = parseChatField('CHAT123\n5512345678\nEID: 98765', 'POS_ESIM');
+    const result = parseChatField(
+      'CHAT123\n5512345678\nEID: 98765',
+      'POS_ESIM',
+    );
     expect(result.eid).toBe('98765');
     expect(result.eidValid).toBe(true);
   });
@@ -240,7 +246,10 @@ describe('parseLineaField', () => {
   });
 
   it('extracts nombreTitular from free text for ADIC_CAC', () => {
-    const result = parseLineaField('5512345678\n5587654321\nJuan Perez', 'ADIC_CAC');
+    const result = parseLineaField(
+      '5512345678\n5587654321\nJuan Perez',
+      'ADIC_CAC',
+    );
     expect(result.nombreTitular).toBe('Juan Perez');
   });
 
@@ -461,7 +470,8 @@ describe('parseData', () => {
   });
 
   it('builds nombreCompleto from parts when not provided directly', () => {
-    const raw = 'Nombre(s): Ana\nPrimer apellido: Lopez\nSegundo apellido: Ruiz';
+    const raw =
+      'Nombre(s): Ana\nPrimer apellido: Lopez\nSegundo apellido: Ruiz';
     const result = parseData(raw, 'POS_CAC', '', '', '', {});
     expect(result.nombreCompleto).toBe('ANA LOPEZ RUIZ');
   });
@@ -486,7 +496,14 @@ describe('parseData', () => {
   });
 
   it('sets esCAC true when nombreCAV is present', () => {
-    const result = parseData('', 'POS_CAC', '', 'CAC Norte\n06600\n15/06', '', {});
+    const result = parseData(
+      '',
+      'POS_CAC',
+      '',
+      'CAC Norte\n06600\n15/06',
+      '',
+      {},
+    );
     expect(result.esCAC).toBe(true);
     expect(result.nombreCAV).toBe('CAC Norte');
     expect(result.cpCAC).toBe('06600');
@@ -499,7 +516,14 @@ describe('parseData', () => {
   });
 
   it('integrates lineaRawText for phone parsing', () => {
-    const result = parseData('', 'POS_ESIM', '5512345678\n5587654321\nuser@test.com\n4321', '', '', {});
+    const result = parseData(
+      '',
+      'POS_ESIM',
+      '5512345678\n5587654321\nuser@test.com\n4321',
+      '',
+      '',
+      {},
+    );
     expect(result.dnPortar).toBe('5512345678');
     expect(result.dnAdicional).toBe('5587654321');
     expect(result.email).toBe('user@test.com');
@@ -507,7 +531,14 @@ describe('parseData', () => {
   });
 
   it('integrates direccionRawText for address parsing', () => {
-    const result = parseData('', 'LN_CAC', '', '', 'Reforma\n123\n06600\nCentro', {});
+    const result = parseData(
+      '',
+      'LN_CAC',
+      '',
+      '',
+      'Reforma\n123\n06600\nCentro',
+      {},
+    );
     expect(result.calle).toBe('Reforma');
     expect(result.numExt).toBe('123');
     expect(result.cpDireccion).toBe('06600');
