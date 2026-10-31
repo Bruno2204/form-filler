@@ -216,6 +216,11 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
   const fvc = cacData.fvc || get('FVC') || get('FECHA VENTA');
   const nombreCAV = cacData.nombreCAV || get('CAC') || get('CAV') || get('Nombre CAV') || get('Nombre_CAV');
 
+  const lineaNuevaProductos = ['LN_ESIM', 'LN_CAC', 'PRE_ESIM'].includes(productKey);
+  const dnContactoCalc = lineaData.dnContacto
+    || (lineaNuevaProductos ? cleanPhone(dnChat) : '')
+    || cleanPhone(get('DN CONTACTO'));
+
   return {
     nombres: nombres || lineaData.nombres || '',
     apellido1: apellido1 || lineaData.apellido1 || '',
@@ -224,9 +229,9 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     email: lineaData.email || get('CORREO') || get('EMAIL') || '',
     dnPortar: lineaData.dnPortar || cleanPhone(get('DN a portar')),
     dnAdicional: lineaData.dnAdicional || cleanPhone(get('DN ADICIONAL')),
-    dnContacto: lineaData.dnContacto || cleanPhone(get('DN CONTACTO')),
+    dnContacto: dnContactoCalc,
     dnMovistar: lineaData.dnMovistar || cleanPhone(get('DN MOVISTAR')),
-    dn: lineaData.dnContacto || cleanPhone(get('DN CONTACTO')),
+    dn: dnContactoCalc,
     calle,
     numExt,
     numInt,

@@ -597,4 +597,36 @@ describe('parseData', () => {
     expect(result.eid).toBe('12345');
     expect(result.eidValid).toBe(true);
   });
+
+  it.each(['LN_ESIM', 'LN_CAC', 'PRE_ESIM'])(
+    '%s: si hay DN en input-linea tiene prioridad sobre el DN del chat',
+    (productKey) => {
+      const result = parseData('', productKey, '5512345678', '', '', {
+        dnChat: '5587654321',
+      });
+      expect(result.dnContacto).toBe('5512345678');
+    },
+  );
+
+  it.each(['LN_ESIM', 'LN_CAC', 'PRE_ESIM'])(
+    '%s sin DN en input-linea: dnContacto cae al DN del chat',
+    (productKey) => {
+      const result = parseData('', productKey, '', '', '', {
+        dnChat: '5512345678',
+      });
+      expect(result.dnChat).toBe('+525512345678');
+      expect(result.dnContacto).toBe('5512345678');
+    },
+  );
+
+  it.each(['POS_ESIM', 'POS_CAC', 'PREPAGO', 'ADIC_CAC'])(
+    '%s: dnChat NO se usa como dnContacto (la regla del chat es sólo para LN)',
+    (productKey) => {
+      const result = parseData('', productKey, '', '', '', {
+        dnChat: '5512345678',
+      });
+      expect(result.dnChat).toBe('+525512345678');
+      expect(result.dnContacto).toBe('');
+    },
+  );
 });
