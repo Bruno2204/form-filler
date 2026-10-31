@@ -6,8 +6,10 @@
 
 window.__ff = window.__ff || {};
 window.__ff.SELECTORS = {
-  // Each Google Forms question block lives inside this jsmodel container.
-  QUESTION_BLOCK: 'div[jsmodel="CP1oW"]',
+  // Each Google Forms question block. Older forms use jsmodel="CP1oW";
+  // newer forms wrap each question in a div.geS5n container. Both keep
+  // the heading inside .M7eMe (see HEADING below).
+  QUESTION_BLOCK: 'div[jsmodel="CP1oW"], div.geS5n',
   // Question title heading inside a question block.
   HEADING: '.M7eMe',
   // Standard text input / textarea inside a question block.

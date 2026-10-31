@@ -62,6 +62,35 @@
         }
       }
 
+      // Es con envío de UBER? → siempre "No"
+      for (const item of document.querySelectorAll(SELECTORS.QUESTION_BLOCK)) {
+        const heading = item
+          .querySelector(SELECTORS.HEADING)
+          ?.innerText?.toLowerCase();
+        if (!heading?.includes('uber')) continue;
+
+        // The "No" radio's data-value varies across forms ("no", "No", or
+        // an internal id). aria-label always reflects the visible label,
+        // so use it as the source of truth. data-value="no" is kept as a
+        // fast path consistent with the "Es con esim" block above.
+        let radio = item.querySelector(
+          `${SELECTORS.RADIO}[data-value="no"]`,
+        );
+        if (!radio) {
+          for (const r of item.querySelectorAll(SELECTORS.RADIO)) {
+            if ((r.getAttribute('aria-label') || '').trim().toLowerCase() === 'no') {
+              radio = r;
+              break;
+            }
+          }
+        }
+        if (radio) {
+          radio.click();
+          filled++;
+        }
+        break;
+      }
+
       // Radio "En caso de ser línea nueva"
       for (const item of document.querySelectorAll(SELECTORS.QUESTION_BLOCK)) {
         const h = item.querySelector(SELECTORS.HEADING);
