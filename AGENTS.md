@@ -110,10 +110,10 @@ Actualizar **las tres** tablas al añadir un producto o campo:
 ```javascript
 // popup.js — fuente de verdad para visibilidad
 PRODUCT_FIELDS = {
-  POS_ESIM:  ['plan', 'linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
-  POS_CAC:   ['plan', 'linea', 'curp', 'cac', 'chat-id', 'chat-dn', 'eid'],
+  POS_ESIM:  ['plan', 'linea', 'curp', 'direccion', 'chat-id', 'chat-dn', 'eid'],
+  POS_CAC:   ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn'],
   LN_ESIM:   ['plan', 'linea', 'curp', 'direccion', 'chat-id', 'chat-dn', 'eid'],
-  LN_CAC:    ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn', 'eid'],
+  LN_CAC:    ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn'],
   PRE_ESIM:  ['linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
   PREPAGO:   ['linea', 'curp', 'cac', 'chat-id', 'chat-dn'],
   ADIC_CAC:  ['plan', 'linea', 'cac', 'chat-id', 'chat-dn'],
@@ -161,6 +161,14 @@ Teléfonos por producto:
 | LN_ESIM, LN_CAC, PRE_ESIM | dnContacto | — |
 | ADIC_CAC | dnMovistar | dnContacto |
 
+**LN (LN_ESIM, LN_CAC, PRE_ESIM) — regla de fallback en `parseData`:** el operador puede pegar un DN de contacto en `input-linea` y ese dato **no se overridea nunca**. Si no hay DN en el textarea de línea, `dnContacto` cae al `dnChat` (DN por el cual el cliente se comunica — DN Respond). Cadena de fallback:
+
+1. `lineaData.dnContacto` (primer phone en `input-linea`) si existe.
+2. `cleanPhone(dnChat)` si no hay phone en línea.
+3. `cleanPhone(get('DN CONTACTO'))` (regex sobre el texto crudo) como último recurso.
+
+Misma regla aplica a `data.dn` (que se usa en `fillPage1` para el campo "DN de contacto" del Google Form).
+
 **`parseCacField`**: línea 1 = CAC, 2 = CP, 3 = FVC (año actual vía `new Date().getFullYear()` si solo dd/mm — el reloj del sistema se usa en parseo; los tests congelan el reloj con `vi.setSystemTime`).
 
 **`parseDireccionField`**: 1–4+ líneas con reglas de calle/colonia/CP/números.
@@ -191,6 +199,7 @@ Reglas especiales:
 
 - `eid` solo se exige si `d.esEsim`.
 - `dnSame` si `dnPortar === dnAdicional` en productos de portabilidad.
+- `dnAdicional` es **opcional** en porta (POS_ESIM, POS_CAC, PREPAGO): si falta, la plantilla renderiza `DN ADICIONAL: SN` y los botones Pág 1/2/3 quedan habilitados (no bloquea avance). El chequeo `dnSame` se preserva gateado por `required.includes('dnPortar')` para que el duplicado silenciosamente no deje de chequearse al sacar `dnAdicional` del required.
 
 ---
 
