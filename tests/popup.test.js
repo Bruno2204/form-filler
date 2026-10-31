@@ -245,13 +245,13 @@ describe('constants structure', () => {
       );
     });
 
-    it('includes dnPortar and dnAdicional only for portability products (POS_ESIM, POS_CAC, PREPAGO)', () => {
+    it('dnPortar is required for portability products (POS_ESIM, POS_CAC, PREPAGO); dnAdicional is no longer required anywhere', () => {
       const portability = ['POS_ESIM', 'POS_CAC', 'PREPAGO'];
       const nonPortability = ['LN_ESIM', 'LN_CAC', 'PRE_ESIM', 'ADIC_CAC'];
 
       for (const key of portability) {
         expect(PRODUCT_REQUIRED_FIELDS[key]).toContain('dnPortar');
-        expect(PRODUCT_REQUIRED_FIELDS[key]).toContain('dnAdicional');
+        expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should NOT require dnAdicional anymore`).not.toContain('dnAdicional');
       }
 
       for (const key of nonPortability) {
@@ -323,6 +323,25 @@ describe('validateRequiredData', () => {
       const result = validateRequiredData(validData(productKey), productKey);
       expect(result.valid).toBe(true);
       expect(result.missing).toEqual([]);
+    });
+  });
+
+  describe('cliente sin número de contacto en porta (3.1.b)', () => {
+    it.each(['POS_ESIM', 'POS_CAC', 'PREPAGO'])(
+      '%s without dnAdicional returns { valid: true }',
+      (productKey) => {
+        const data = validData(productKey, { dnAdicional: '' });
+        const result = validateRequiredData(data, productKey);
+        expect(result.valid).toBe(true);
+        expect(result.missing).not.toContain('dnAdicional');
+      },
+    );
+
+    it('LN_ESIM still requires dnContacto (regla NO se extiende a LN)', () => {
+      const data = validData('LN_ESIM', { dnContacto: '' });
+      const result = validateRequiredData(data, 'LN_ESIM');
+      expect(result.valid).toBe(false);
+      expect(result.missing).toContain('dnContacto');
     });
   });
 
@@ -599,10 +618,40 @@ describe('PRODUCT_TEMPLATES', () => {
       expect(result).toContain('Juan'); // nombres
     });
 
+    it('POS_ESIM contains the direccion block at the end (after CURP VERIFICADO)', () => {
+      const result = PRODUCT_TEMPLATES.POS_ESIM(validData('POS_ESIM'));
+      expect(result).toContain('Av Reforma 100'); // calle
+      expect(result).toContain('06600'); // cpDireccion
+      expect(result).toContain('Juárez'); // colonia
+      const calleIdx = result.indexOf('CALLE:');
+      const curpIdx = result.indexOf('CURP VERIFICADO:');
+      expect(calleIdx).toBeGreaterThan(-1);
+      expect(curpIdx).toBeGreaterThan(-1);
+      expect(
+        calleIdx,
+        'POS_ESIM places the direccion block AFTER CURP VERIFICADO'
+      ).toBeGreaterThan(curpIdx);
+    });
+
     it('POS_CAC contains nombreCAV and cpCAC values (CAC section)', () => {
       const result = PRODUCT_TEMPLATES.POS_CAC(validData('POS_CAC'));
       expect(result).toContain('CAC Centro');
       expect(result).toContain('06000'); // cpCAC
+    });
+
+    it('POS_CAC contains the direccion block at the end (after FVC)', () => {
+      const result = PRODUCT_TEMPLATES.POS_CAC(validData('POS_CAC'));
+      expect(result).toContain('Av Reforma 100'); // calle
+      expect(result).toContain('06600'); // cpDireccion
+      expect(result).toContain('Juárez'); // colonia
+      const calleIdx = result.indexOf('CALLE:');
+      const fvcIdx = result.indexOf('FVC:');
+      expect(calleIdx).toBeGreaterThan(-1);
+      expect(fvcIdx).toBeGreaterThan(-1);
+      expect(
+        calleIdx,
+        'POS_CAC places the direccion block AFTER FVC'
+      ).toBeGreaterThan(fvcIdx);
     });
 
     it('LN_ESIM contains dnContacto + direccion components (calle, cpDireccion, colonia)', () => {
@@ -650,6 +699,15 @@ describe('PRODUCT_TEMPLATES', () => {
       expect(result).toContain('5511111111'); // dnPortar
       expect(result).toContain('5522222222'); // dnAdicional
       expect(result).not.toContain('CALLE:');
+    });
+
+    it('POS_ESIM, POS_CAC, PREPAGO render "DN ADICIONAL: SN" when dnAdicional is missing', () => {
+      for (const productKey of ['POS_ESIM', 'POS_CAC', 'PREPAGO']) {
+        const data = validData(productKey, { dnAdicional: '' });
+        const result = PRODUCT_TEMPLATES[productKey](data);
+        expect(result, `${productKey} should contain "DN ADICIONAL: SN"`).toContain('DN ADICIONAL: SN');
+        expect(result, `${productKey} should NOT contain an empty "DN ADICIONAL: " line`).not.toMatch(/^DN ADICIONAL:\s*$/m);
+      }
     });
 
     it('ADIC_CAC contains dnMovistar, dnContacto, and nombreTitular', () => {

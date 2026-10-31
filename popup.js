@@ -2,12 +2,12 @@
 // Utiliza la función parseData de parser.js, precargada en popup.html
 
 const PRODUCT_TEMPLATES = {
-  POS_ESIM: (d) => `POSPAGO ESIM
-EQUIPO: EID
+  POS_ESIM: (d) => `PORTABILIDAD POSPAGO ESIM
+EID: ${d.eid || ''}
 PLAN: ${d.plan || ''}
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
-DN ADICIONAL: ${d.dnAdicional || ''}
+DN ADICIONAL: ${d.dnAdicional || 'SN'}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -16,13 +16,19 @@ SEGUNDO APELLIDO: ${d.apellido2 || ''}
 Sexo: ${d.genero || ''}
 FECHA NACIM: ${d.fecha || ''}
 ESTADO NACIM: ${d.lugarNacimiento || ''}
-CURP VERIFICADO: ${d.curp || ''}`,
+CURP VERIFICADO: ${d.curp || ''}
 
-  POS_CAC: (d) => `POSPAGO CAC
+CALLE: ${d.calle || ''}
+NUMERO EXTERIOR: ${d.numExt || ''}
+NÚMERO INTERIOR: ${d.numInt || ''}
+CÓDIGO POSTAL: ${d.cpDireccion || ''}
+COLONIA: ${d.colonia || ''}`,
+
+  POS_CAC: (d) => `PORTABILIDAD POSPAGO CAC
 PLAN: ${d.plan || ''}
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
-DN ADICIONAL: ${d.dnAdicional || ''}
+DN ADICIONAL: ${d.dnAdicional || 'SN'}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -35,11 +41,17 @@ CURP VERIFICADO: ${d.curp || ''}
 
 CAC: ${d.nombreCAV || ''}
 CP: ${d.cpCAC || ''}
-FVC: ${d.fvc || ''}`,
+FVC: ${d.fvc || ''}
 
-  LN_ESIM: (d) => `Línea Nueva ESIM
+CALLE: ${d.calle || ''}
+NUMERO EXTERIOR: ${d.numExt || ''}
+NÚMERO INTERIOR: ${d.numInt || ''}
+CÓDIGO POSTAL: ${d.cpDireccion || ''}
+COLONIA: ${d.colonia || ''}`,
+
+  LN_ESIM: (d) => `LINEA NUEVA ESIM
 PLAN: ${d.plan || ''}
-EQUIPO: EID
+EID: ${d.eid || ''}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -58,7 +70,7 @@ NÚMERO INTERIOR: ${d.numInt || ''}
 CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
-  LN_CAC: (d) => `Línea Nueva CAC
+  LN_CAC: (d) => `LINEA NUEVA CAC
 PLAN: ${d.plan || ''}
 CORREO: ${d.email || ''}
 
@@ -83,7 +95,7 @@ CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
   PRE_ESIM: (d) => `Línea Nueva Prepago ESIM
-EQUIPO: EID
+EID: ${d.eid || ''}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -96,10 +108,10 @@ SEXO: ${d.genero || ''}
 CURP: ${d.curp || ''}
 Estado de nacimiento: ${d.lugarNacimiento || ''}`,
 
-  PREPAGO: (d) => `PREPAGO
+  PREPAGO: (d) => `PORTABILIDAD PREPAGO
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
-DN ADICIONAL: ${d.dnAdicional || ''}
+DN ADICIONAL: ${d.dnAdicional || 'SN'}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -114,7 +126,7 @@ CAC: ${d.nombreCAV || ''}
 CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
-  ADIC_CAC: (d) => `Adición CAC
+  ADIC_CAC: (d) => `ADICION CAC
 PLAN: ${d.plan || ''}
 DN MOVISTAR: ${d.dnMovistar || ''}
 
@@ -127,8 +139,8 @@ CP: ${d.cpCAC || ''}`,
 };
 
 const PRODUCT_FIELDS = {
-  POS_ESIM: ['plan', 'linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
-  POS_CAC: ['plan', 'linea', 'curp', 'cac', 'chat-id', 'chat-dn'],
+  POS_ESIM: ['plan', 'linea', 'curp', 'direccion', 'chat-id', 'chat-dn', 'eid'],
+  POS_CAC: ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn'],
   LN_ESIM: ['plan', 'linea', 'curp', 'direccion', 'chat-id', 'chat-dn', 'eid'],
   LN_CAC: ['plan', 'linea', 'curp', 'direccion', 'cac', 'chat-id', 'chat-dn'],
   PRE_ESIM: ['linea', 'curp', 'chat-id', 'chat-dn', 'eid'],
@@ -154,7 +166,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'plan',
     'dnPortar',
     'nip',
-    'dnAdicional',
     'email',
     'nombres',
     'apellido1',
@@ -162,6 +173,9 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fecha',
     'lugarNacimiento',
     'curp',
+    'calle',
+    'cpDireccion',
+    'colonia',
     'chatId',
     'dnChat',
     'eid',
@@ -170,7 +184,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'plan',
     'dnPortar',
     'nip',
-    'dnAdicional',
     'email',
     'nombres',
     'apellido1',
@@ -178,6 +191,9 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fecha',
     'lugarNacimiento',
     'curp',
+    'calle',
+    'cpDireccion',
+    'colonia',
     'nombreCAV',
     'cpCAC',
     'fvc',
@@ -235,7 +251,6 @@ const PRODUCT_REQUIRED_FIELDS = {
   PREPAGO: [
     'dnPortar',
     'nip',
-    'dnAdicional',
     'email',
     'nombres',
     'apellido1',
@@ -469,7 +484,7 @@ function validateRequiredData(d, productKey) {
     }
   });
 
-  if (required.includes('dnPortar') && required.includes('dnAdicional')) {
+  if (required.includes('dnPortar')) {
     if (d.dnPortar && d.dnAdicional && d.dnPortar === d.dnAdicional) {
       missing.push('dnSame');
     }
