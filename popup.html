@@ -249,6 +249,29 @@
         cursor: pointer;
       }
 
+      /* Dropdown de etiquetas del contacto */
+      .select-etiqueta {
+        font-family: var(--font);
+        flex: 1;
+        min-width: 0;
+        height: 32px;
+        font-size: 12px;
+        color: var(--text-main);
+        background-color: #fafafa;
+        border: 1px solid var(--gray-border);
+        border-radius: var(--radius);
+        padding: 4px 6px;
+        outline: none;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+
+      .select-etiqueta:focus {
+        border-color: var(--primary);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+      }
+
       /* --- Zona de Resultado Final --- */
       .result-container {
         padding: 0;
@@ -714,6 +737,12 @@
               />
               <span>Prospección IA</span>
             </label>
+          </div>
+          <!-- Dropdown con el resto de etiquetas del form (una sola) -->
+          <div class="input-row">
+            <select id="select-etiqueta" class="select-etiqueta">
+              <option value="">Sin etiqueta adicional</option>
+            </select>
           </div>
         </div>
       </div>

@@ -168,6 +168,190 @@ const CONTACT_TAGS = [
   { id: 'input-etiqueta-prospeccion-ia', label: 'Prospección IA' },
 ];
 
+// Opciones del dropdown de etiquetas de contacto.
+// Son la "cola larga" del form: las dos de arriba (Reapertura, Prospección
+// IA) son las más usadas y por eso quedan como checkboxes visibles.
+//
+// El texto es el ETIQUETADO CANÓNICO del form (con tildes y mayúsculas tal
+// como aparecen). El matching contra el DOM normaliza ambos lados
+// (normalizeLabel en content/utils.js), así que si el form escribe
+// "Prospeccion IA" el match sigue funcionando.
+const CONTACT_TAG_OPTIONS = [
+  'Adición Pospago',
+  'AI Pospago',
+  'BOTÓN FLOTANTE ESIM',
+  'Competitors V2',
+  'Competitors Pospago Integral',
+  'Dayparting Pospago Integral',
+  'DN BOTÓN FLOTANTE',
+  'DN PMAX',
+  'DN SEM - 1',
+  'DN SEM - 2',
+  'DN SEM - 3',
+  'DN SEM - 4',
+  'DN SEM - 5',
+  'eSIM organico',
+  'eSIM Portabilidad organico',
+  'Generica integral V1',
+  'Generica integral V2',
+  'Globant Google',
+  'Globant Meta',
+  'GOOGLE AMPLIA ABT PB',
+  'GOOGLE AT&T ABT CONQUER',
+  'GOOGLE MOVISTAR ABT BRAND',
+  'GOOGLE CDMX ABT CATEGORY',
+  'Google eSIM',
+  'Google banner Pro 11',
+  'GOOGLE EXACTA ABT PB',
+  'Google RMK Pro 11',
+  'GOOGLE EXACTA RMKT PB',
+  'GOOGLE MOVISTAR RMKT BRAND',
+  'GOOGLE PMAX',
+  'LKL WSP Pospago Integral',
+  'NUEVO - MOVISTAR RMKT BRND',
+  'Orgánico PosPago',
+  'Piloto CAPI B Integral',
+  'Plan Pro 13 RMK',
+  'Prepago Organico',
+  'Prospecting Pospago Integral',
+  'Volumen Pospago Integral',
+];
+
+// Catálogo COMPLETO de etiquetas que expone la sección "Etiquetas del
+// contacto" del Google Form (Pág 1). No todas se ofrecen en el dropdown:
+// esta lista es la referencia para saber qué existe en el form y para
+// agregar opciones nuevas.
+//
+// Snapshot tomado del form real. Si el form cambia, actualizar acá.
+//
+// Nota: "Reapertura" a secas es una etiqueta DISTINTA de las variantes
+// "Reapertura_*" / "Reapertura_*" (Reapertura_Caido, Reapertura_Nip, …).
+// La que se usa siempre es la simple.
+const FORM_TAGS = [
+  'Adición Pospago',
+  'ADQUISITION',
+  'ADQUISITION B Pospago',
+  'ADQUISITION Pospago',
+  'AI Pospago',
+  'Afiliado ActualS 4',
+  'Amazon',
+  'BOTÓN FLOTANTE ESIM',
+  'CCN 3',
+  'CCN 4',
+  'CCN B',
+  'Concentra 5',
+  'Competitors V2',
+  'Competitors Pospago Integral',
+  'Dayparting Pospago Integral',
+  'DIBBI-Meta',
+  'DN BOTÓN FLOTANTE',
+  'DN PMAX',
+  'DN SEM - 1',
+  'DN SEM - 2',
+  'DN SEM - 3',
+  'DN SEM - 4',
+  'DN SEM - 5',
+  'eSIM organico',
+  'eSIM Portabilidad organico',
+  'Generica integral V1',
+  'Generica integral V2',
+  'Globant Google',
+  'Globant Meta',
+  'GOOGLE AMPLIA ABT PB',
+  'GOOGLE AT&T ABT CONQUER',
+  'GOOGLE MOVISTAR ABT BRAND',
+  'GOOGLE CDMX ABT CATEGORY',
+  'Google eSIM',
+  'Google banner Pro 11',
+  'GOOGLE EXACTA ABT PB',
+  'Google RMK Pro 11',
+  'GOOGLE EXACTA RMKT PB',
+  'GOOGLE MOVISTAR RMKT BRAND',
+  'Google plan 16',
+  'Google Plan 20',
+  'Google Plan 30',
+  'GOOGLE PMAX',
+  'HAVAS',
+  'KW Brand ABT Autogestión +WSP',
+  'LKL WSP Pospago Integral',
+  'Meta Pospago Dispositivo',
+  'Meta plan 16',
+  'NUEVO - MOVISTAR RMKT BRND',
+  'Nuevo SEM - 4',
+  'Orgánico PosPago',
+  'Orgánico META pospago',
+  'Orgánico PosPago Pop up',
+  'Piloto CAPI B Integral',
+  'Plan Pro 13 RMK',
+  'Pospago Organico',
+  'Prepago Google',
+  'Prepago Mailing',
+  'Prepago Organico',
+  'Prospección IA',
+  'Prospecting Pospago Integral',
+  'Propuestas Pospago',
+  'Reapertura',
+  'Reapertura_Caido',
+  'RMK Pospago',
+  'Reapertura Abandono',
+  'Reapertura Cancelados',
+  'Reapertura_Calificado',
+  'Reaperturas GOOGLE',
+  'Reapertura llamada',
+  'Reapertura_ProspectoCP',
+  'Reapertura_NoContesta',
+  'Reapertura_Prospecto',
+  'Reapertura_Prospecto_cac',
+  'Reaperturas META',
+  'Reapertura_Nip',
+  'Reapertura_esim',
+  'Recupero Prospecto CAC',
+  'Recupero Prospecto ESIM',
+  'Reapertura Referidos',
+  'Reapertura_Rechazo_NIP',
+  'Reapertura_Prospecto_CURP/RFC',
+  'Recupero Trebbel',
+  'Telefónica',
+  'TREBBEL',
+  'Volumen Pospago',
+  'Volumen Pospago A',
+  'Volumen Pospago Integral',
+];
+
+// Clave de cache de la etiqueta elegida en el dropdown.
+const EXTRA_TAG_CACHE_KEY = 'input_cache_etiqueta_extra';
+
+// Normaliza una etiqueta para comparar: sin acentos, minúsculas y sin
+// espacios extra. Mismo criterio que normalizeLabel en content/utils.js,
+// para que el dedupe del panel y el matching del form no diverjan.
+function normalizeTagLabel(label) {
+  if (!label) return '';
+  return String(label)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Une varias listas de etiquetas sin duplicados. La comparación es
+// insensible a acentos y mayúsculas, pero se conserva el TEXTO CANÓNICO
+// de la primera aparición (el que espera el form).
+function mergeTagLabels(...lists) {
+  const seen = new Set();
+  const merged = [];
+  lists.forEach((list) => {
+    (Array.isArray(list) ? list : []).forEach((label) => {
+      if (typeof label !== 'string') return;
+      const key = normalizeTagLabel(label);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(label);
+    });
+  });
+  return merged;
+}
+
 const PHONE_FIELDS = ['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'];
 
 const PRODUCT_REQUIRED_FIELDS = {
@@ -431,11 +615,67 @@ function getFieldOverrides() {
 }
 
 // Etiquetas de contacto marcadas por el operador.
+// Son dos fuentes: los checkboxes frecuentes (Reapertura, Prospección IA)
+// y la etiqueta elegida en el dropdown (una sola). Se combinan sin duplicados.
 function getSelectedTags() {
-  return CONTACT_TAGS.filter((tag) => {
+  const checked = CONTACT_TAGS.filter((tag) => {
     const el = document.getElementById(tag.id);
     return !!(el && el.checked);
   }).map((tag) => tag.label);
+  return mergeTagLabels(checked, [getDropdownTag()]);
+}
+
+// ─── ETIQUETAS: DROPDOWN ────────────────────────────────────────────────────
+// El dropdown elige UNA etiqueta (además de los checkboxes). El `<select>`
+// es el estado: su `value` es la etiqueta elegida.
+
+function getTagSelect() {
+  return document.getElementById('select-etiqueta');
+}
+
+// Etiqueta elegida en el dropdown ('' si no hay ninguna).
+function getDropdownTag() {
+  const select = getTagSelect();
+  const value = select ? select.value : '';
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+// Llena el dropdown con las etiquetas disponibles en el form.
+function populateTagSelect() {
+  const select = getTagSelect();
+  if (!select) return;
+  // El placeholder ("Sin etiqueta adicional") ya está en el HTML.
+  CONTACT_TAG_OPTIONS.forEach((label) => {
+    const option = document.createElement('option');
+    option.value = label;
+    option.textContent = label;
+    select.appendChild(option);
+  });
+}
+
+// Guarda la etiqueta elegida en localStorage.
+function saveDropdownTag(label) {
+  const value = (label || '').trim();
+  if (value) {
+    localStorage.setItem(EXTRA_TAG_CACHE_KEY, value);
+  } else {
+    localStorage.removeItem(EXTRA_TAG_CACHE_KEY);
+  }
+}
+
+// Restaura la etiqueta elegida desde localStorage.
+function loadDropdownTag() {
+  const select = getTagSelect();
+  if (!select) return;
+  const saved = (localStorage.getItem(EXTRA_TAG_CACHE_KEY) || '').trim();
+  if (saved && CONTACT_TAG_OPTIONS.includes(saved)) {
+    select.value = saved;
+    return;
+  }
+  // La etiqueta cacheada ya no existe en el catálogo (se cambió la lista):
+  // se descarta para no dejar un valor huérfano en el cache.
+  if (saved) localStorage.removeItem(EXTRA_TAG_CACHE_KEY);
+  select.value = '';
 }
 
 // Procesa y formatea los datos recopilados de los textareas visibles
@@ -783,6 +1023,9 @@ if (typeof document !== 'undefined') {
       if (el) el.checked = false;
       localStorage.removeItem(`input_cache_${tag.id}`);
     });
+    localStorage.removeItem(EXTRA_TAG_CACHE_KEY);
+    const tagSelect = getTagSelect();
+    if (tagSelect) tagSelect.value = '';
     lastResult = '';
     document.getElementById('phone-alert-portar').style.display = 'none';
     document.getElementById('phone-alert-adicional').style.display = 'none';
@@ -824,6 +1067,18 @@ if (typeof document !== 'undefined') {
         processData();
       });
     });
+
+    // Dropdown de etiquetas: populate + restaurar la elegida
+    populateTagSelect();
+    loadDropdownTag();
+
+    const tagSelect = getTagSelect();
+    if (tagSelect) {
+      tagSelect.addEventListener('change', () => {
+        saveDropdownTag(tagSelect.value);
+        processData();
+      });
+    }
 
     // Restaurar producto activo
     const savedProduct = localStorage.getItem('active_product') || 'POS_ESIM';
@@ -1027,5 +1282,9 @@ if (typeof module !== 'undefined' && module.exports) {
     PRODUCT_REQUIRED_FIELDS,
     ALL_INPUT_FIELDS,
     CONTACT_TAGS,
+    CONTACT_TAG_OPTIONS,
+    FORM_TAGS,
+    mergeTagLabels,
+    normalizeTagLabel,
   };
 }

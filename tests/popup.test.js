@@ -16,6 +16,10 @@ import {
   PRODUCT_FIELDS,
   PRODUCT_REQUIRED_FIELDS,
   CONTACT_TAGS,
+  CONTACT_TAG_OPTIONS,
+  FORM_TAGS,
+  mergeTagLabels,
+  normalizeTagLabel,
 } from '../popup.js';
 
 // ESIM product set is the source of truth for esEsim gating in validateRequiredData.
@@ -217,6 +221,105 @@ describe('CONTACT_TAGS', () => {
     for (const productKey of Object.keys(PRODUCT_REQUIRED_FIELDS)) {
       expect(PRODUCT_REQUIRED_FIELDS[productKey]).not.toContain('etiquetas');
     }
+  });
+});
+
+describe('CONTACT_TAG_OPTIONS', () => {
+  it('expone las etiquetas que se eligen desde el dropdown', () => {
+    expect(CONTACT_TAG_OPTIONS).toContain('Adición Pospago');
+    expect(CONTACT_TAG_OPTIONS).toContain('GOOGLE PMAX');
+    expect(CONTACT_TAG_OPTIONS).toContain('Volumen Pospago Integral');
+    expect(CONTACT_TAG_OPTIONS).toContain('Plan Pro 13 RMK');
+  });
+
+  it('no incluye las etiquetas que ya son checkboxes (Reapertura / Prospección IA)', () => {
+    // Duplicarlas sería ruido: el checkbox ya las cubre.
+    expect(CONTACT_TAG_OPTIONS).not.toContain('Reapertura');
+    expect(CONTACT_TAG_OPTIONS).not.toContain('Prospección IA');
+  });
+
+  it('no incluye variantes de Reapertura (solo la simple)', () => {
+    expect(
+      CONTACT_TAG_OPTIONS.filter((tag) => tag.startsWith('Reapertura')),
+    ).toEqual([]);
+  });
+
+  it('todas las opciones existen en el catálogo completo del form', () => {
+    for (const option of CONTACT_TAG_OPTIONS) {
+      expect(FORM_TAGS, `"${option}" no está en FORM_TAGS`).toContain(option);
+    }
+  });
+
+  it('no tiene opciones duplicadas', () => {
+    const normalized = CONTACT_TAG_OPTIONS.map((tag) => normalizeTagLabel(tag));
+    expect(new Set(normalized).size).toBe(normalized.length);
+  });
+});
+
+describe('FORM_TAGS', () => {
+  it('guarda el catálogo completo de etiquetas del form', () => {
+    expect(FORM_TAGS).toContain('Reapertura');
+    expect(FORM_TAGS).toContain('Prospección IA');
+    expect(FORM_TAGS).toContain('ADQUISITION');
+    expect(FORM_TAGS).toContain('Telefónica');
+    expect(FORM_TAGS).toContain('Volumen Pospago Integral');
+  });
+
+  it('incluye las variantes de Reapertura (son etiquetas distintas)', () => {
+    expect(FORM_TAGS).toContain('Reapertura_Caido');
+    expect(FORM_TAGS).toContain('Reapertura_Nip');
+  });
+
+  it('no tiene etiquetas duplicadas', () => {
+    expect(new Set(FORM_TAGS).size).toBe(FORM_TAGS.length);
+  });
+});
+
+describe('normalizeTagLabel', () => {
+  it('quita acentos, pasa a minúsculas y colapsa espacios', () => {
+    expect(normalizeTagLabel('Prospección IA')).toBe('prospeccion ia');
+    expect(normalizeTagLabel('  Adición   Pospago ')).toBe('adicion pospago');
+    expect(normalizeTagLabel('BOTÓN FLOTANTE ESIM')).toBe(
+      'boton flotante esim',
+    );
+  });
+
+  it('devuelve string vacío para valores vacíos', () => {
+    expect(normalizeTagLabel('')).toBe('');
+    expect(normalizeTagLabel(null)).toBe('');
+    expect(normalizeTagLabel(undefined)).toBe('');
+  });
+});
+
+describe('mergeTagLabels', () => {
+  it('combina las listas sin duplicar', () => {
+    expect(
+      mergeTagLabels(['Reapertura'], ['GOOGLE PMAX', 'Reapertura']),
+    ).toEqual(['Reapertura', 'GOOGLE PMAX']);
+  });
+
+  it('dedupea insensible a acentos y mayúsculas', () => {
+    expect(mergeTagLabels(['Prospección IA'], ['Prospeccion IA'])).toEqual([
+      'Prospección IA',
+    ]);
+  });
+
+  it('conserva el texto canónico de la primera aparición', () => {
+    expect(mergeTagLabels(['Orgánico PosPago'], ['Organico PosPago'])).toEqual([
+      'Orgánico PosPago',
+    ]);
+  });
+
+  it('ignora entradas vacías o no-string', () => {
+    expect(mergeTagLabels(['', '  ', null, undefined, 42], ['AI Pospago'])).toEqual([
+      'AI Pospago',
+    ]);
+  });
+
+  it('tolera listas que no son arrays', () => {
+    expect(mergeTagLabels(null, undefined, 'nope', ['Volumen Pospago'])).toEqual([
+      'Volumen Pospago',
+    ]);
   });
 });
 

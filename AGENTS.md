@@ -112,9 +112,37 @@ Convención de IDs: `input-{field}` y `group-{field}`.
 
 ### Etiquetas del contacto
 
-Los checkboxes **no** son campos de texto: viven en `CONTACT_TAGS` (`popup.js`), fuera de
-`ALL_INPUT_FIELDS` (que asume `input-{field}.value`). Su grupo nunca se oculta y no son
-obligatorios. Se cachean como `input_cache_{id}` con `'1'` / `'0'` y se desmarcan con **Limpiar**.
+Hay **dos fuentes** de etiquetas, ambas en `popup.js` y ambas disponibles para
+**todos** los productos:
+
+| Fuente | Constante | UI | Cache |
+|--------|-----------|-----|-------|
+| Checkboxes frecuentes | `CONTACT_TAGS` | `input-etiqueta-*` (checkbox) | `input_cache_{id}` = `'1'`/`'0'` |
+| Dropdown (una sola) | `CONTACT_TAG_OPTIONS` | `select-etiqueta` | `input_cache_etiqueta_extra` (label) |
+
+`FORM_TAGS` es el **catálogo completo** de etiquetas que expone el form (88
+entradas, snapshot del form real): sirve de referencia para saber qué existe y
+para agregar opciones nuevas al dropdown. `CONTACT_TAG_OPTIONS` (38 entradas) es
+el subconjunto que el operador elige desde el dropdown.
+
+Los checkboxes **no** son campos de texto: viven en `CONTACT_TAGS`, fuera de
+`ALL_INPUT_FIELDS` (que asume `input-{field}.value`). Su grupo nunca se oculta
+y no son obligatorios.
+
+**Cómo funcionan:**
+
+- El dropdown es un `<select>` con un placeholder (`"Sin etiqueta adicional"`) y
+  las opciones de `CONTACT_TAG_OPTIONS`. Elige **una sola** etiqueta: no hay
+  botón de agregar ni chips, el `value` del select ES el estado.
+- El placeholder (valor vacío) significa "ninguna etiqueta adicional".
+- `getSelectedTags()` combina los checkboxes con la etiqueta del dropdown
+  usando `mergeTagLabels()`, que deduplica **insensible a acentos y mayúsculas**
+  (`normalizeTagLabel`) pero conserva el texto canónico de la primera aparición.
+- **Limpiar** vacía los checkboxes, resetea el dropdown y borra el cache.
+
+**Reapertura ≠ variantes.** "Reapertura" a secas es una etiqueta distinta de
+`Reapertura_Caido`, `Reapertura_Nip`, `Reapertura_Prospecto`, etc. La que se usa
+siempre es la simple — por eso está en `CONTACT_TAGS` y no en el dropdown.
 
 El texto canónico conserva la tilde (`Prospección IA`) y el matching con el form es
 **insensible a acentos y mayúsculas** (`normalizeLabel` en `content/utils.js`), así que el
@@ -311,10 +339,10 @@ Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
 - `fillCheckboxes` — marca los checkboxes de una sección (ej. "Etiquetas del contacto")
   verificando `aria-checked`. Lo que el operador no marcó se deja como esté.
   Busca en **todos** los bloques de la sección (`findQuestionBlocks`), no sólo
-  en el primero: con muchas casillas el form las reparte en varios bloques del
-  DOM y buscar uno solo dejaba tags sin marcar. `collectCheckboxes` deduplica
-  los elementos repetidos (el selector de bloques matchea la misma pregunta
-  dos veces: contenedor `CP1oW` + hijo `geS5n`).
+  en el primero: con 88 casillas el form las reparte en varios bloques del DOM
+  y buscar uno solo dejaba tags sin marcar. `collectCheckboxes` deduplica los
+  elementos repetidos (el selector de bloques matchea la misma pregunta dos
+  veces: contenedor `CP1oW` + hijo `geS5n`).
 - `findQuestionBlock`, `findQuestionBlocks`, `collectCheckboxes`, `toggleCheckbox` — supporting de los anteriores.
 
 ### DOM real de los dropdowns de Google Forms
@@ -382,6 +410,7 @@ veces** (el contenedor `CP1oW` y su hijo `geS5n`). Consecuencias:
 | `active_product` | Clave de producto activo |
 | `input_cache_{field}` | Valor de cada input (`plan`, `linea`, `curp`, …) |
 | `input_cache_{input-etiqueta-*}` | Estado de cada checkbox de etiquetas (`'1'` / `'0'`) |
+| `input_cache_etiqueta_extra` | Etiqueta elegida en el dropdown (un label) |
 
 Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en chat-id / chat-dn / eid al cargar.
 
@@ -418,6 +447,13 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] `parsed.etiquetas` (array) y `fillCheckboxes` en `content/helpers.js`
 - [ ] Test de matching con y sin tilde
 
+### Nueva etiqueta en el dropdown
+
+- [ ] `CONTACT_TAG_OPTIONS` en `popup.js` (subconjunto que el operador elige)
+- [ ] `FORM_TAGS` en `popup.js` (catálogo completo del form — la referencia)
+- [ ] Test: toda opción del dropdown existe en `FORM_TAGS`
+- [ ] No duplicar con `CONTACT_TAGS` (Reapertura / Prospección IA ya son checkboxes)
+
 ### Nuevo producto
 
 - [ ] Botón en `.products-grid` con `data-product`
@@ -453,8 +489,10 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 3. Botón ⎘ en cada input (requiere `clipboardRead`).
 4. Abrir Google Form → Pág 1 (Nombre → Bruno, Producto, etiquetas) / Pág 2 / Pág 3
    (Plan elegido, Usuario Backend → CHT00096, Equipo Modelo → EID).
-5. **Limpiar** borra inputs, cache, alertas y desmarca las etiquetas.
+5. **Limpiar** borra inputs, cache, alertas, desmarca las etiquetas y resetea el dropdown.
 6. Cambiar producto oculta/muestra grupos correctos sin perder cache de otros campos.
+7. Dropdown de etiquetas: elegir una, volver a elegir otra (reemplaza), recargar el
+   panel (persiste) y **Limpiar** (vuelve al placeholder).
 
 ---
 
@@ -466,7 +504,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 |---------|-----------|
 | `tests/e2e.test.js` | Cadena completa: datos crudos → `parseData` → resultado formateado (texto exacto esperado) |
 | `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, `formatPlanForOutput`, overrides |
-| `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS` |
+| `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS`, `CONTACT_TAG_OPTIONS`, `FORM_TAGS`, `mergeTagLabels` |
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
 | `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` con un mini-DOM simulado (sección repartida en varios bloques) |
 
@@ -510,3 +548,6 @@ tiene que contar la historia del producto, no la de la depuración.
 | Texto canónico con tilde + matching insensible a acentos | El form puede cambiar "Prospección" por "Prospeccion" |
 | Las etiquetas NO van en el Resultado Formateado | Solo se usan para el Google Form |
 | Checkboxes de etiquetas fuera de `ALL_INPUT_FIELDS` | Ese array asume inputs de texto |
+| Dropdown de etiqueta única, sin botón `+` ni chips | Del dropdown sólo se usa una etiqueta a la vez: el `value` del select es el estado y el form recibe una sola etiqueta extra |
+| Catálogo completo (`FORM_TAGS`) aparte del subconjunto del dropdown | `FORM_TAGS` es la referencia de qué existe en el form; el dropdown es lo que el operador usa |
+| "Reapertura" simple separada de las variantes `Reapertura_*` | Son checkboxes distintos en el form; la simple es la que se usa |
