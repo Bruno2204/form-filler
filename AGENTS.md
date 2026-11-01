@@ -310,7 +310,12 @@ Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
   seleccionada. Devuelve `{ ok, label, error }`.
 - `fillCheckboxes` — marca los checkboxes de una sección (ej. "Etiquetas del contacto")
   verificando `aria-checked`. Lo que el operador no marcó se deja como esté.
-- `findQuestionBlock`, `collectCheckboxes`, `toggleCheckbox` — supporting de los anteriores.
+  Busca en **todos** los bloques de la sección (`findQuestionBlocks`), no sólo
+  en el primero: con muchas casillas el form las reparte en varios bloques del
+  DOM y buscar uno solo dejaba tags sin marcar. `collectCheckboxes` deduplica
+  los elementos repetidos (el selector de bloques matchea la misma pregunta
+  dos veces: contenedor `CP1oW` + hijo `geS5n`).
+- `findQuestionBlock`, `findQuestionBlocks`, `collectCheckboxes`, `toggleCheckbox` — supporting de los anteriores.
 
 ### DOM real de los dropdowns de Google Forms
 
@@ -463,8 +468,9 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, `formatPlanForOutput`, overrides |
 | `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS` |
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
+| `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` con un mini-DOM simulado (sección repartida en varios bloques) |
 
-El código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
+El resto del código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
 
 ---
 

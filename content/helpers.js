@@ -267,33 +267,61 @@
     // distintas páginas/secciones), se devuelve el PRIMERO: es el que
     // corresponde a la página que se está rellenando.
     findQuestionBlock(labelText) {
+      return api.findQuestionBlocks(labelText)[0] || null;
+    },
+
+    // Igual que findQuestionBlock pero devuelve TODOS los bloques que
+    // matchean. Necesario con secciones grandes (ej. "Etiquetas del
+    // contacto" con 88 casillas): el form puede repartir las casillas en
+    // varios bloques del DOM y buscar sólo el primero dejaría tags sin
+    // marcar.
+    findQuestionBlocks(labelText) {
       const utils = root.__ff.utils;
       const wanted = utils.normalizeLabel(labelText);
-      if (!wanted) return null;
+      if (!wanted) return [];
 
+      const blocks = [];
       const items = document.querySelectorAll(SELECTORS.QUESTION_BLOCK);
       for (const item of items) {
         const heading = utils.normalizeLabel(
           item.querySelector(SELECTORS.HEADING)?.innerText || '',
         );
-        if (heading && heading.includes(wanted)) return item;
+        if (heading && heading.includes(wanted)) blocks.push(item);
       }
-      return null;
+      return blocks;
     },
 
     // Normaliza los checkboxes a datos planos (value / label).
+    // `scope` puede ser un contenedor, una lista de contenedores o null
+    // (documento entero). Los elementos repetidos se deduplican: el
+    // selector de bloques matchea la misma pregunta DOS veces (contenedor
+    // div[jsmodel=CP1oW] y su hijo div.geS5n).
     collectCheckboxes(scope) {
-      const container = scope || document;
-      return [...container.querySelectorAll(SELECTORS.CHECKBOX)].map((el) => ({
-        element: el,
-        value: (el.getAttribute('data-value') || '').trim(),
-        label: (
-          el.getAttribute('aria-label') ||
-          el.parentElement?.querySelector('label')?.innerText ||
-          el.innerText ||
-          ''
-        ).trim(),
-      }));
+      let containers;
+      if (!scope) containers = [document];
+      else if (Array.isArray(scope)) containers = scope;
+      else containers = [scope];
+
+      const seen = new Set();
+      const pool = [];
+      containers.forEach((container) => {
+        if (!container) return;
+        container.querySelectorAll(SELECTORS.CHECKBOX).forEach((el) => {
+          if (seen.has(el)) return;
+          seen.add(el);
+          pool.push({
+            element: el,
+            value: (el.getAttribute('data-value') || '').trim(),
+            label: (
+              el.getAttribute('aria-label') ||
+              el.parentElement?.querySelector('label')?.innerText ||
+              el.innerText ||
+              ''
+            ).trim(),
+          });
+        });
+      });
+      return pool;
     },
 
     // Marca o desmarca un checkbox y verifica el estado resultante.
@@ -328,8 +356,12 @@
       const wanted = Array.isArray(wantedLabels) ? wantedLabels : [];
       if (wanted.length === 0) return result;
 
-      const scope = api.findQuestionBlock(scopeLabel);
-      let pool = api.collectCheckboxes(scope);
+      // Se buscan TODOS los bloques con ese título: la sección "Etiquetas
+      // del contacto" tiene muchas casillas y el form puede repartirlas
+      // en varios bloques del DOM. Con un solo bloque, las que quedaran
+      // fuera no se marcarían nunca.
+      const blocks = api.findQuestionBlocks(scopeLabel);
+      let pool = api.collectCheckboxes(blocks);
       if (pool.length === 0) {
         // La sección puede no estar agrupada como una sola pregunta:
         // se busca en todo el documento por etiqueta exacta.
