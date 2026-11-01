@@ -45,19 +45,32 @@ class El {
   }
 
   dispatchEvent(event) {
-    // El trigger del listbox se "abre" con mousedown + mouseup: el mini-DOM
-    // marca con aria-expanded el listbox ancestro más cercano.
-    if (event.type === 'mouseup' || event.type === 'mousedown') {
-      let node = this;
-      while (node) {
-        if (node.getAttribute('role') === 'listbox') {
-          node.setAttribute('aria-expanded', 'true');
-          break;
-        }
-        node = node.parent;
-      }
+    // Los eventos PROPAGAN (como en el DOM real): se disparan los
+    // listeners del nodo y de sus ancestros.
+    const fire = (node) => {
+      (node.listeners || [])
+        .filter((l) => l.type === event.type)
+        .forEach((l) => l.handler(event));
+    };
+    fire(this);
+    let node = this.parent;
+    while (node) {
+      fire(node);
+      node = node.parent;
     }
     return true;
+  }
+
+  addEventListener(type, handler) {
+    this.listeners = this.listeners || [];
+    this.listeners.push({ type, handler });
+  }
+
+  // Dispara manual: el mini-DOM no tiene bubbling real de eventos.
+  fire(type) {
+    (this.listeners || [])
+      .filter((l) => l.type === type)
+      .forEach((l) => l.handler({ type }));
   }
 
   contains(node) {
@@ -114,8 +127,17 @@ function option(value) {
     value,
   );
   el.tagName = 'div';
-  // El click marca la opción como seleccionada.
-  el.click = () => el.setAttribute('aria-selected', 'true');
+  // El click sólo marca la opción si está en el POPUP (fuera del
+  // trigger). La original, que queda recortada dentro del trigger,
+  // NO recibe el click: es el comportamiento real de Google Forms.
+  el.click = () => {
+    let node = el.parent;
+    while (node) {
+      if (node.getAttribute('role') === 'listbox') return; // recortada
+      node = node.parent;
+    }
+    el.setAttribute('aria-selected', 'true');
+  };
   return el;
 }
 
@@ -142,8 +164,15 @@ function dropdownBlock(headingText, values) {
 }
 
 /**
- * Documento mínimo: `querySelectorAll` busca en todos los bloques y
- * devuelve lo que matchea el selector (bloques de pregunta u opciones).
+ * Popups abiertos: los que Forms crea al abrir un dropdown (viven en el
+ * body, fuera del bloque de la pregunta).
+ */
+const openPopups = [];
+
+/**
+ * Documento mínimo: `querySelectorAll` busca en todos los bloques y en
+ * los popups abiertos, y devuelve lo que matchea el selector (bloques de
+ * pregunta u opciones).
  */
 function mockDocument(blocks) {
   return {
@@ -154,10 +183,40 @@ function mockDocument(blocks) {
         node.children.forEach(walk);
       };
       blocks.forEach(walk);
+      openPopups.forEach(walk);
       return out;
     },
     getElementById: () => null,
     activeElement: null,
+  };
+}
+
+/**
+ * Simula el comportamiento de Google Forms al abrir un dropdown: las
+ * opciones se MUEVEN del trigger a un popup que va al body, y el trigger
+ * queda con aria-expanded="true". Las dos cosas pasan JUNTAS (el popup
+ * aparece y el trigger se marca), así que no hay una ventana en la que
+ * uno esté listo y el otro no.
+ *
+ * Con `cold` la mudanza tarda un macrotask (como el layout real de la
+ * primera vez); si no, es un microtask (como el change detection de
+ * Angular).
+ */
+function makeFormOpenMove(cold) {
+  return function move(trigger, opts) {
+    const moveNow = () => {
+      // El popup es un contenedor nuevo en el body: las opciones salen
+      // del trigger y pasan a estar fuera de él.
+      const popup = new El({ role: 'presentation' }, opts);
+      popup.tagName = 'div';
+      for (const o of opts) o.parent = popup;
+      trigger.setAttribute('aria-expanded', 'true');
+      // El popup vive en el body: hay que registrarlo para que el
+      // mockDocument lo encuentre.
+      openPopups.push(popup);
+    };
+    if (cold) setTimeout(moveNow, 4);
+    else Promise.resolve().then(moveNow);
   };
 }
 
@@ -277,6 +336,7 @@ describe('selectDropdownByHeading con umbral estricto', () => {
   let dropdown;
 
   beforeEach(() => {
+    openPopups.length = 0;
     dropdown = dropdownBlock(HEADING, [
       'Reaperturas META',
       'Reaperturas GOOGLE',
@@ -290,6 +350,14 @@ describe('selectDropdownByHeading con umbral estricto', () => {
       visibility: 'visible',
       display: 'block',
     });
+
+    // El dropdown responde al mouseup como Forms: mueve sus opciones al
+    // popup (fuera del trigger) y marca aria-expanded. La mudanza tarda un
+    // macrotask, como el layout real.
+    const open = makeFormOpenMove(true);
+    dropdown.trigger.addEventListener('mouseup', () =>
+      open(dropdown.trigger, dropdown.opts),
+    );
   });
 
   const selected = () =>
@@ -319,6 +387,53 @@ describe('selectDropdownByHeading con umbral estricto', () => {
     expect(result.filled).toBe(0);
     expect(result.failed).toHaveLength(1);
     expect(selected()).toEqual([]);
+  });
+
+  it('no confunde el popup de otro dropdown de la misma página', async () => {
+    // REGRESIÓN: la Pág 1 tiene varios dropdowns ("Nombre" con 25
+    // opciones, "Producto" con 64). Al abrir uno, sus opciones se van al
+    // popup (fuera del trigger). Si la detección de "ya está abierto"
+    // mirara CUALQUIER opción fuera del trigger, el segundo dropdown
+    // creería que ya está abierto sin haberlo abierto: el click caería
+    // sobre la opción recortada y no seleccionaría nada.
+    const other = dropdownBlock('Nombre', [
+      'Bruno',
+      'Ana',
+      'Carlos',
+    ]);
+
+    global.document = mockDocument([other.block, dropdown.block]);
+    global.window.getComputedStyle = () => ({
+      opacity: '1',
+      visibility: 'visible',
+      display: 'block',
+    });
+
+    // El popup del PRIMER dropdown: sus opciones ya están FUERA de su
+    // trigger, en el body. Es exactamente lo que confundía la detección.
+    const moveOther = makeFormOpenMove(false);
+    moveOther(other.trigger, other.opts);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(other.opts[0].parent).not.toBe(other.trigger);
+
+    // El segundo dropdown: su mudanza al popup tarda un MACROTASK (como
+    // el layout real). Si la detección de "ya está abierto" se cumple
+    // antes de tiempo (por culpa del popup del otro), se haría click
+    // sobre la opción recortada, que no recibe el click: no selecciona.
+    const open = makeFormOpenMove(true);
+    dropdown.trigger.addEventListener('mouseup', () =>
+      open(dropdown.trigger, dropdown.opts),
+    );
+
+    const result = await helpers.selectDropdownByHeading(
+      HEADING,
+      'GOOGLE PMAX',
+      95,
+    );
+
+    expect(result.filled).toBe(1);
+    expect(result.failed).toEqual([]);
+    expect(selected()).toEqual(['GOOGLE PMAX']);
   });
 
   it('no matchea una etiqueta que no existe en el dropdown', async () => {

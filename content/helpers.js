@@ -7,6 +7,26 @@
   const root = typeof window !== 'undefined' ? window : globalThis;
   const { SELECTORS } = root.__ff || {};
 
+  // Intervalo de sondeo al esperar un cambio de estado en el DOM.
+  // 16 ms ≈ un frame a 60 Hz: lo bastante rápido para que el relleno se
+  // vea instantáneo, sin quemar CPU con un poll agresivo.
+  const POLL_INTERVAL = 16;
+
+  // Cuántos microtask yields se dan antes de caer al fallback de macrotask.
+  // El change detection de Angular (zone.js) corre al vaciar el microtask
+  // queue: con un par de yields alcanza para un cambio de atributo. Se
+  // dan más porque Forms puede encadenar varias tareas de ese tipo antes
+  // de actualizar el DOM (construir el popup es un caso así).
+  //
+  // Son gratis (no hay timer) y NO dejan pintar al navegador.
+  const MICRO_YIELDS = 12;
+
+  // Retardo del fallback de macrotask. El primero es 0 ms a propósito: el
+  // cambio del form se aplica al final de la tarea en curso, así que un
+  // solo tick alcanza. Después se separa para no quemar CPU si nunca llega.
+  const MACRO_BACKOFF = [0, 0, 1, 2, 4, 8];
+
+
   const api = {
     // Escribe texto en un input emitiendo eventos reales
     setInput(input, value) {
@@ -39,14 +59,46 @@
       return new Promise((resolve) => setTimeout(resolve, ms));
     },
 
-    // Espera a que un predicado devuelva un valor truthy.
-    async waitFor(predicate, timeout = 2000, interval = 50) {
+    // Espera activa: sondea el predicado hasta que devuelva un valor
+    // truthy, en vez de dormir una cantidad fija de tiempo.
+    //
+    // Hace esto en dos fases, y el orden importa:
+    //
+    // 1. MICROTASK (primero, y es lo habitual). Google Forms corre sobre
+    //    Angular: tras el click, el change detection se dispara al
+    //    vaciar el microtask queue. Un yield de microtask alcanza para
+    //    que el DOM ya esté actualizado — y NO deja pintar al
+    //    navegador, así que el menú abierto no llega a verse.
+    //
+    // 2. MACROTASK (respaldo). Si el cambio no llegó por microtask
+    //    (un rAF o un timer dentro del form), se cede al event loop con
+    //    un timer. Acá el navegador SÍ puede pintar, así que sólo se
+    //    llega acá cuando no hay otra opción.
+    //
+    // Con esperas fijas (sleep) se pagaba el coste completo (120 ms por
+    // click) aunque el resultado estuviera listo a los 5 ms, y se veía el
+    // menú parpadear.
+    async waitFor(predicate, timeout = 2000, interval = POLL_INTERVAL) {
       const deadline = Date.now() + timeout;
+      let attempt = 0;
+
       for (;;) {
         const value = predicate();
         if (value) return value;
         if (Date.now() >= deadline) return null;
-        await api.sleep(interval);
+
+        // Fase 1: microtasks. Gratis y sin pintar.
+        for (let i = 0; i < MICRO_YIELDS; i += 1) {
+          await Promise.resolve();
+          const micro = predicate();
+          if (micro) return micro;
+        }
+
+        // Fase 2: macrotask, con backoff para no quemar CPU.
+        const delay =
+          attempt < MACRO_BACKOFF.length ? MACRO_BACKOFF[attempt] : interval;
+        attempt += 1;
+        await api.sleep(delay);
       }
     },
 
@@ -72,7 +124,11 @@
     // 2. se manda mousedown + mouseup pero NO click: el mouseup abre el
     //    menú y el click lo vuelve a cerrar (por eso se veía abrir dos
     //    veces). El click se usa después, sobre la opción.
-    async openListbox(trigger) {
+    //
+    // `targetValue` es la opción que se quiere elegir: sirve para
+    // esperar a que ÉSA se mueva al popup (y no confundirse con el popup
+    // de otro dropdown de la misma página).
+    async openListbox(trigger, targetValue = '') {
       // Si el operador ya lo dejó abierto a mano, no se toca: el mouseup
       // haría toggle y lo cerraría.
       if (api.isOpen(trigger)) return true;
@@ -96,14 +152,32 @@
 
       inner.focus?.();
       press(inner);
-      if (await api.waitFor(() => api.isOpen(trigger), 600)) return true;
+
+      // Espera a que nuestra opción se mueva al popup (o a que el trigger
+      // se marque como abierto). Son dos señales distintas:
+      //
+      // - La PRIMERA vez (frío) Forms tiene que clonar las ~25 opciones
+      //   y meter el popup en el body: eso es trabajo de layout y el DOM
+      //   cambia en un MACROTASK. Con microtasks no alcanza y hay que
+      //   ceder el control → el navegador pinta el popup abierto.
+      // - Las siguientes (caliente) el popup ya existe y sólo cambia un
+      //   atributo: el DOM cambia en un MICROTASK y no se cede el
+      //   control → el popup no llega a pintarse nunca.
+      //
+      // Por eso se dan muchos microtask yields primero (cubren el caso
+      // caliente, sin pintar) y sólo después se cede al event loop (el
+      // caso frío, donde no hay más opción).
+      const ready = () =>
+        api.isOpen(trigger) ||
+        api.hasPopupOption(trigger, targetValue);
+      if (await api.waitFor(ready, 600)) return true;
 
       // Segundo intento: sobre el valor visible (lo que hace el operador
       // a mano).
       const display = trigger.querySelector(SELECTORS.OPTION);
       if (display && display !== inner) {
         press(display);
-        if (await api.waitFor(() => api.isOpen(trigger), 800)) return true;
+        if (await api.waitFor(ready, 800)) return true;
       }
 
       return false;
@@ -159,6 +233,10 @@
     // Al abrir el menú, Google Forms pasa las opciones al popup (que
     // queda FUERA del trigger) y deja las originales recortadas dentro.
     // Por eso se prefiere la de fuera: la de adentro no recibe el click.
+    //
+    // `getComputedStyle` fuerza un reflow y en un form grande es caro:
+    // por eso sólo se usa si hay más de una opción candidata. Con una
+    // sola (el caso normal) se devuelve directo.
     findVisibleOption(targetValue, trigger) {
       const wanted = (targetValue || '').trim();
       if (!wanted) return null;
@@ -172,9 +250,36 @@
       const outside = options.filter((option) => !trigger.contains(option));
       const inside = options.filter((option) => trigger.contains(option));
       const pool = outside.length > 0 ? outside : inside;
+      if (pool.length === 1) return pool[0];
 
       const visible = pool.filter((option) => api.isVisible(option));
       return visible[0] || pool[0];
+    },
+
+    // ¿La opción de ESTE dropdown ya se movió al popup?
+    //
+    // Al abrir, Google Forms mueve las opciones al popup (fuera del
+    // trigger): la original queda recortada y no recibe el click. Que
+    // nuestra opción esté fuera del trigger es la señal de que el popup
+    // se construyó y ya se puede clickear la copia correcta.
+    //
+    // Importante: se busca SÓLO la opción que nos interesa (por
+    // data-value). Buscar "cualquier opción fuera del trigger" daría
+    // true por culpa del popup de otro dropdown de la misma página, y
+    // este creería que ya está abierto sin haberlo abierto nunca.
+    hasPopupOption(trigger, targetValue) {
+      const wanted = (targetValue || '').trim();
+      if (!wanted) return false;
+      const options = document.querySelectorAll(SELECTORS.OPTION);
+      for (const option of options) {
+        if (
+          (option.getAttribute('data-value') || '').trim() === wanted &&
+          !trigger.contains(option)
+        ) {
+          return true;
+        }
+      }
+      return false;
     },
 
     // ¿Quedó seleccionada la opción? Puede quedar marcado el clon del
@@ -194,6 +299,10 @@
     // la estrategia que funcionó, o null.
     // La verificación mira TODAS las opciones con ese data-value: el
     // marcador puede quedar en la copia y no en el elemento clickeado.
+    //
+    // Cada estrategia espera de forma ACTIVA (sondeo el estado) en vez de
+    // dormir 120 ms a ciegas: si el click surtió efecto al primer frame,
+    // se sigue al instante y el dropdown no llega a verse "parpadeando".
     async clickOption(optionElement, targetValue) {
       const selected = () =>
         api.isSelectedAnywhere(targetValue) || api.isSelected(optionElement);
@@ -201,8 +310,7 @@
       // 1. Click directo (funciona: el popup delega el handler de
       //    selección en la opción).
       optionElement.click();
-      await api.sleep(120);
-      if (selected()) return 'click';
+      if (await api.waitFor(selected, 120)) return 'click';
 
       // 2. Secuencia completa de mouse sobre la opción.
       for (const type of ['mousedown', 'mouseup', 'click']) {
@@ -214,15 +322,13 @@
           }),
         );
       }
-      await api.sleep(120);
-      if (selected()) return 'mouse-sequence';
+      if (await api.waitFor(selected, 120)) return 'mouse-sequence';
 
       // 3. Click en el texto visible de la opción.
       const label = optionElement.querySelector('span');
       if (label) {
         label.click();
-        await api.sleep(120);
-        if (selected()) return 'click-label';
+        if (await api.waitFor(selected, 120)) return 'click-label';
       }
 
       return null;
@@ -325,13 +431,13 @@
     },
 
     // Marca o desmarca un checkbox y verifica el estado resultante.
+    // Espera ACTIVA: sondea `aria-checked` en vez de dormir 120 ms fijos.
     async toggleCheckbox(element, checked) {
       const isChecked = () => element.getAttribute('aria-checked') === 'true';
       if (isChecked() === checked) return true;
 
       element.click();
-      await api.sleep(120);
-      if (isChecked() === checked) return true;
+      if (await api.waitFor(() => isChecked() === checked, 120)) return true;
 
       // Fallback: input[type=checkbox] oculto asociado al control.
       const input =
@@ -341,8 +447,7 @@
         input.checked = checked;
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
-        await api.sleep(80);
-        if (isChecked() === checked) return true;
+        if (await api.waitFor(() => isChecked() === checked, 80)) return true;
       }
       return false;
     },
@@ -483,7 +588,7 @@
       const lookupValue = minScore > 0 ? match.value || targetValue : targetValue;
 
       // Abrir el menú.
-      let opened = await api.openListbox(trigger);
+      let opened = await api.openListbox(trigger, lookupValue);
 
       // Si no abrió, clickear una opción también abre el menú (Google
       // Forms clona las opciones al popup en ese momento).
@@ -511,6 +616,9 @@
       // hacer click, porque Google Forms delega el handler en el popup).
       const strategy = await api.clickOption(target.element, lookupValue);
       if (strategy && api.isSelectedAnywhere(lookupValue)) {
+        // NO se cierra el popup acá. Google Forms lo cierra solo en su
+        // propio ciclo, con animación; hacerlo con Escape (closeListbox)
+        // podría DESELECCIONAR lo recién elegido. El popup se va solo.
         return {
           ok: true,
           label: target.label || target.value,
@@ -522,7 +630,10 @@
       // flechas deja el dropdown scrolleado al final y ensucia el form.
       // Si el click no selecciona, se informa el fallo y el operador lo ve.
       api.closeListbox(trigger);
-      await api.sleep(150);
+      await api.waitFor(
+        () => api.showsSelectedText(trigger, target, utils),
+        150,
+      );
 
       if (api.showsSelectedText(trigger, target, utils)) {
         return {
