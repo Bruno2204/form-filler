@@ -459,6 +459,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 
 | Archivo | Qué cubre |
 |---------|-----------|
+| `tests/e2e.test.js` | Cadena completa: datos crudos → `parseData` → resultado formateado (texto exacto esperado) |
 | `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, `formatPlanForOutput`, overrides |
 | `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS` |
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
