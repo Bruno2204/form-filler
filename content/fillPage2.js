@@ -10,6 +10,7 @@
   window.__ff.fillPage2 = async function (data) {
     try {
       let filled = 0;
+      const failed = [];
 
       let formaEnvio = null;
       if (data.esEsim) {
@@ -79,7 +80,7 @@
         if (setInput(cpInput, data.cpCAC)) filled++;
       }
 
-      return { ok: true, filled };
+      return { ok: true, filled, failed };
     } catch (e) {
       return { ok: false, error: e.message };
     }

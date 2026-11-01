@@ -22,4 +22,6 @@ window.__ff.SELECTORS = {
   OPTION: 'div[role="option"]',
   // Radio button control.
   RADIO: 'div[role="radio"]',
+  // Checkbox control (secciones con varias casillas, ej. etiquetas).
+  CHECKBOX: 'div[role="checkbox"]',
 };

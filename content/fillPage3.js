@@ -4,12 +4,14 @@
 
 (function () {
   const { SELECTORS } = window.__ff;
-  const { setInput, findInputByLabel, selectDropdownOption } = window.__ff.helpers;
+  const { setInput, findInputByLabel, selectDropdownOption, selectDropdownByHeading } =
+    window.__ff.helpers;
   const { isLineaNueva, gMatch, ddmmyyyyToISO } = window.__ff.utils;
 
   window.__ff.fillPage3 = async function (data) {
     try {
       let filled = 0;
+      const failed = [];
 
       const dnP = isLineaNueva(data.producto) ? 'En espera' : data.dnPortar;
 
@@ -136,8 +138,9 @@
           if (label.includes('equipo modelo') && label.includes('esim')) {
             const listbox = item.querySelector(SELECTORS.LISTBOX);
             if (listbox) {
-              const success = await selectDropdownOption(item, 'EID');
-              if (success) filled++;
+              const result = await selectDropdownOption(item, 'EID');
+              if (result.ok) filled++;
+              else failed.push('Equipo Modelo');
             } else {
               const input = item.querySelector(SELECTORS.TEXT_INPUT);
               if (setInput(input, 'EID')) filled++;
@@ -166,15 +169,21 @@
         for (const item of document.querySelectorAll(SELECTORS.QUESTION_BLOCK)) {
           const heading = item.querySelector(SELECTORS.HEADING);
           if (heading?.innerText?.toLowerCase().includes('plan elegido')) {
-            console.log(
-              `Detectado dropdown Plan Elegido, buscando: ${planElegido}`,
-            );
-            const success = await selectDropdownOption(item, planElegido);
-            if (success) filled++;
+            const result = await selectDropdownOption(item, planElegido);
+            if (result.ok) filled++;
+            else failed.push('Plan elegido');
             break;
           }
         }
       }
+
+      // Dropdown "Usuario Backend" → siempre CHT00096
+      const usuarioBackend = await selectDropdownByHeading(
+        'Usuario Backend',
+        'CHT00096',
+      );
+      filled += usuarioBackend.filled;
+      if (usuarioBackend.failed.length > 0) failed.push('Usuario Backend');
 
       // Últimos 5 dígitos del EID
       const eidInput =
@@ -188,7 +197,7 @@
         if (setInput(eidInput, eidValue)) filled++;
       }
 
-      return { ok: true, filled };
+      return { ok: true, filled, failed };
     } catch (e) {
       return { ok: false, error: e.message };
     }

@@ -4,20 +4,27 @@
 
 (function () {
   const { SELECTORS } = window.__ff;
-  const { setInput, findInputByLabel, selectDropdownOption } = window.__ff.helpers;
+  const {
+    setInput,
+    findInputByLabel,
+    selectDropdownOption,
+    fillCheckboxes,
+  } = window.__ff.helpers;
   const { normalizeText } = window.__ff.utils;
 
   window.__ff.fillPage1 = async function (data) {
     try {
       let filled = 0;
+      const failed = [];
 
       // ── 1. SELECT "Nombre" → "Bruno"
       const items = document.querySelectorAll(SELECTORS.QUESTION_BLOCK);
       for (const item of items) {
         const heading = item.querySelector(SELECTORS.HEADING);
         if (heading?.innerText?.trim() === 'Nombre') {
-          const success = await selectDropdownOption(item, 'Bruno');
-          if (success) filled++;
+          const result = await selectDropdownOption(item, 'Bruno');
+          if (result.ok) filled++;
+          else failed.push('Nombre');
           break;
         }
       }
@@ -68,9 +75,22 @@
       )
         filled++;
 
-      return { ok: true, filled };
+      // ── Etiquetas del contacto (checkboxes) ──
+      // Sólo se marca lo que el operador pidió; lo demás se deja como esté.
+      const etiquetas = Array.isArray(data.etiquetas) ? data.etiquetas : [];
+      if (etiquetas.length > 0) {
+        const result = await fillCheckboxes(
+          'Etiquetas del contacto',
+          etiquetas,
+        );
+        filled += result.filled;
+        result.failed.forEach((tag) => failed.push(`Etiqueta ${tag}`));
+      }
+
+      return { ok: true, filled, failed };
     } catch (e) {
       return { ok: false, error: e.message };
     }
   };
+
 })();
