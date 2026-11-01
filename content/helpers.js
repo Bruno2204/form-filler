@@ -390,8 +390,10 @@
     // contenedor div[jsmodel=CP1oW] y su hijo div.geS5n). Sin agrupar por
     // identidad del trigger se llenaría el mismo dropdown dos veces (y se
     // vería abrir y cerrar dos veces).
+    // `minScore` descarta las coincidencias débiles (prefijo/contiene):
+    // con catálogos de etiquetas eso marcaría la etiqueta vecina.
     // Devuelve { ok, filled, failed }.
-    async selectDropdownByHeading(headingText, targetValue) {
+    async selectDropdownByHeading(headingText, targetValue, minScore = 0) {
       const utils = root.__ff.utils;
       const wanted = utils.normalizeLabel(headingText);
       const result = { filled: 0, failed: [] };
@@ -417,7 +419,11 @@
       }
 
       for (const item of matching) {
-        const selection = await api.selectDropdownOption(item, targetValue);
+        const selection = await api.selectDropdownOption(
+          item,
+          targetValue,
+          minScore,
+        );
         if (selection.ok) result.filled++;
         else result.failed.push(headingText);
       }
@@ -428,7 +434,11 @@
     // Selecciona una opción de un dropdown de Google Forms.
     // Devuelve { ok, label, error } para que el caller pueda informar
     // qué quedó sin rellenar en vez de contar un intento como un acierto.
-    async selectDropdownOption(itemElement, targetValue) {
+    // `minScore` es el puntaje mínimo aceptable de la coincidencia (100 =
+    // data-value exacto). Con 0 el matching es laxo: sirve para los planes
+    // (código corto "30" → "PLAN PRO 30"), pero para etiquetas marcaría la
+    // opción vecina ("Reapertura" vs "Reaperturas META").
+    async selectDropdownOption(itemElement, targetValue, minScore = 0) {
       if (!itemElement || !targetValue) {
         return { ok: false, error: 'faltan argumentos' };
       }
@@ -450,6 +460,27 @@
       if (!match) {
         return { ok: false, error: `opción no encontrada: ${targetValue}` };
       }
+      // Coincidencia laxa (prefijo o contiene): con catálogos de etiquetas
+      // eso seleccionaría la opción vecina. Se descarta.
+      if (minScore > 0 && utils.optionMatchScore(match, targetValue) < minScore) {
+        return {
+          ok: false,
+          error: `sin coincidencia exacta: ${targetValue}`,
+        };
+      }
+
+      // Con qué valor se busca la opción en el DOM.
+      //
+      //Modo estricto (minScore > 0): se usa el data-value CANÓNICO de la
+      // opción encontrada. Si el form escribe "Adicion Pospago" (sin tilde)
+      // y el operador pidió "Adición Pospago", el match laxo lo encontró
+      // pero las verificaciones por data-value comparan texto CRUDO y
+      // fallarían. Con el valor del form la comparación es exacta.
+      //
+      // Modo laxo (minScore = 0): se mantiene el texto pedido, que es lo
+      // que el dropdown de planes espera (código corto "30" → "PLAN PRO
+      // 30" se resuelve por el trigger, no por el data-value).
+      const lookupValue = minScore > 0 ? match.value || targetValue : targetValue;
 
       // Abrir el menú.
       let opened = await api.openListbox(trigger);
@@ -469,7 +500,7 @@
       // trigger): la original queda recortada y no recibe el click. Se
       // busca DIRECTAMENTE la opción del popup, sin adivinar qué
       // contenedor es (en la pág. 3 hay varios dropdowns y varios popups).
-      const openOption = api.findVisibleOption(targetValue, trigger);
+      const openOption = api.findVisibleOption(lookupValue, trigger);
       const target = {
         element: openOption || match.element,
         value: match.value,
@@ -478,8 +509,8 @@
 
       // Camino principal: click sobre la opción (con varias formas de
       // hacer click, porque Google Forms delega el handler en el popup).
-      const strategy = await api.clickOption(target.element, targetValue);
-      if (strategy && api.isSelectedAnywhere(targetValue)) {
+      const strategy = await api.clickOption(target.element, lookupValue);
+      if (strategy && api.isSelectedAnywhere(lookupValue)) {
         return {
           ok: true,
           label: target.label || target.value,

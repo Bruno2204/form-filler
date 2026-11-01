@@ -8,6 +8,7 @@
     setInput,
     findInputByLabel,
     selectDropdownOption,
+    selectDropdownByHeading,
     fillCheckboxes,
   } = window.__ff.helpers;
   const { normalizeText } = window.__ff.utils;
@@ -85,6 +86,27 @@
         );
         filled += result.filled;
         result.failed.forEach((tag) => failed.push(`Etiqueta ${tag}`));
+      }
+
+      // ── Dropdown "¿Línea telefónica a la que se comunica?" ──
+      // Es un dropdown aparte (NO son las casillas de arriba): lleva el
+      // catálogo de etiquetas del form como opciones de un <select>.
+      // El heading termina en "&nbsp;" y el normalizeLabel lo colapsa.
+      //
+      // minScore 95 = exige coincidencia EXACTA (data-value o texto).
+      // Sin eso, "Reapertura" haría match con "Reaperturas META" (que es
+      // un prefijo, score 70) y se marcaría la etiqueta equivocada.
+      const etiquetaDropdown = (data.etiquetaDropdown || '').trim();
+      if (etiquetaDropdown) {
+        const result = await selectDropdownByHeading(
+          '¿Línea telefónica a la que se comunica?',
+          etiquetaDropdown,
+          95,
+        );
+        filled += result.filled;
+        result.failed.forEach(() =>
+          failed.push('¿Línea telefónica a la que se comunica?'),
+        );
       }
 
       return { ok: true, filled, failed };

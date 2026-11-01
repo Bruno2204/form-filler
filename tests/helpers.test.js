@@ -43,6 +43,33 @@ class El {
     const next = this.getAttribute('aria-checked') !== 'true';
     this.setAttribute('aria-checked', next ? 'true' : 'false');
   }
+
+  dispatchEvent(event) {
+    // El trigger del listbox se "abre" con mousedown + mouseup: el mini-DOM
+    // marca con aria-expanded el listbox ancestro más cercano.
+    if (event.type === 'mouseup' || event.type === 'mousedown') {
+      let node = this;
+      while (node) {
+        if (node.getAttribute('role') === 'listbox') {
+          node.setAttribute('aria-expanded', 'true');
+          break;
+        }
+        node = node.parent;
+      }
+    }
+    return true;
+  }
+
+  contains(node) {
+    let current = node;
+    while (current) {
+      if (current === this) return true;
+      current = current.parent;
+    }
+    return false;
+  }
+
+  focus() {}
 }
 
 function matches(el, sel) {
@@ -79,8 +106,88 @@ function block(headingText, boxes) {
   return inner;
 }
 
+/** Opción de un dropdown (div[role=option] con data-value). */
+function option(value) {
+  const el = new El(
+    { role: 'option', 'data-value': value, 'aria-selected': 'false' },
+    [],
+    value,
+  );
+  el.tagName = 'div';
+  // El click marca la opción como seleccionada.
+  el.click = () => el.setAttribute('aria-selected', 'true');
+  return el;
+}
+
+/**
+ * Bloque de pregunta con un dropdown (div[role=listbox]) que cuelga de un
+ * trigger, con sus opciones dentro — igual que en el DOM real de Forms:
+ *
+ *   div[role=listbox] > div[jsname=LgbsSe] > div[role=option] ...
+ */
+function dropdownBlock(headingText, values) {
+  const heading = new El({ class: 'M7eMe' }, [], headingText);
+  const opts = values.map(option);
+  const inner = new El({ jsname: 'LgbsSe' }, opts);
+  inner.tagName = 'div';
+  const trigger = new El({ role: 'listbox', 'aria-expanded': 'false' }, [inner]);
+  trigger.tagName = 'div';
+  const blockEl = new El({ jsmodel: 'CP1oW' }, [heading, trigger]);
+  opts.forEach((o) => {
+    o.parent = inner;
+  });
+  inner.parent = trigger;
+  trigger.parent = blockEl;
+  return { block: blockEl, trigger, opts };
+}
+
+/**
+ * Documento mínimo: `querySelectorAll` busca en todos los bloques y
+ * devuelve lo que matchea el selector (bloques de pregunta u opciones).
+ */
+function mockDocument(blocks) {
+  return {
+    querySelectorAll(sel) {
+      const out = [];
+      const walk = (node) => {
+        if (matches(node, sel)) out.push(node);
+        node.children.forEach(walk);
+      };
+      blocks.forEach(walk);
+      return out;
+    },
+    getElementById: () => null,
+    activeElement: null,
+  };
+}
+
 // El harness carga los content scripts, que se enganchan a window.__ff.
 global.window = global;
+
+// MouseEvent/KeyboardEvent no existen en Node: el helper abre el listbox
+// con mousedown + mouseup y lo cierra con Escape. Los stubs sólo necesitan
+// que el constructor exista.
+global.MouseEvent = class MouseEvent {
+  constructor(type, init = {}) {
+    this.type = type;
+    this.bubbles = init.bubbles ?? false;
+    this.cancelable = init.cancelable ?? false;
+    this.view = init.view ?? null;
+  }
+};
+
+global.KeyboardEvent = class KeyboardEvent {
+  constructor(type, init = {}) {
+    this.type = type;
+    this.key = init.key ?? '';
+    this.code = init.code ?? '';
+    this.keyCode = init.keyCode ?? 0;
+    this.which = init.which ?? 0;
+    this.bubbles = init.bubbles ?? false;
+    this.cancelable = init.cancelable ?? false;
+  }
+};
+
 require('../content/constants.js');
 require('../content/utils.js');
 const helpers = require('../content/helpers.js');
@@ -107,11 +214,7 @@ describe('fillCheckboxes', () => {
     const blockA = block('Etiquetas del contacto', tagsA);
     const blockB = block('Etiquetas del contacto', tagsB);
 
-    global.document = {
-      querySelectorAll(sel) {
-        return [otherBlock, blockA, blockB].filter((b) => matches(b, sel));
-      },
-    };
+    global.document = mockDocument([otherBlock, blockA, blockB]);
   });
 
   const state = (list) =>
@@ -163,5 +266,69 @@ describe('fillCheckboxes', () => {
       'Prospección IA=false',
       'GOOGLE PMAX=false',
     ]);
+  });
+});
+
+describe('selectDropdownByHeading con umbral estricto', () => {
+  // El heading real del form termina en "&nbsp;" y el normalizeLabel lo
+  // colapsa: el match tiene que funcionar igual.
+  const HEADING = '¿Línea telefónica a la que se comunica?';
+
+  let dropdown;
+
+  beforeEach(() => {
+    dropdown = dropdownBlock(HEADING, [
+      'Reaperturas META',
+      'Reaperturas GOOGLE',
+      'GOOGLE PMAX',
+      'Orgánico PosPago',
+    ]);
+
+    global.document = mockDocument([dropdown.block]);
+    global.window.getComputedStyle = () => ({
+      opacity: '1',
+      visibility: 'visible',
+      display: 'block',
+    });
+  });
+
+  const selected = () =>
+    dropdown.opts
+      .filter((o) => o.getAttribute('aria-selected') === 'true')
+      .map((o) => o.getAttribute('data-value'));
+
+  it('selecciona la opción exacta', async () => {
+    const result = await helpers.selectDropdownByHeading(
+      HEADING,
+      'GOOGLE PMAX',
+      95,
+    );
+    expect(result.filled).toBe(1);
+    expect(result.failed).toEqual([]);
+    expect(selected()).toEqual(['GOOGLE PMAX']);
+  });
+
+  it('rechaza un prefijo que no es coincidencia exacta', async () => {
+    // "Reapertura" haría match laxo con "Reaperturas META" (prefijo,
+    // score 70). Con el umbral estricto no debe seleccionar ninguna.
+    const result = await helpers.selectDropdownByHeading(
+      HEADING,
+      'Reapertura',
+      95,
+    );
+    expect(result.filled).toBe(0);
+    expect(result.failed).toHaveLength(1);
+    expect(selected()).toEqual([]);
+  });
+
+  it('no matchea una etiqueta que no existe en el dropdown', async () => {
+    const result = await helpers.selectDropdownByHeading(
+      HEADING,
+      'Etiqueta Inventada',
+      95,
+    );
+    expect(result.filled).toBe(0);
+    expect(result.failed).toHaveLength(1);
+    expect(selected()).toEqual([]);
   });
 });

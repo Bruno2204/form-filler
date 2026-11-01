@@ -261,6 +261,7 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     dnChat: dnChatOverride = '',
     eid: eidOverride = '',
     etiquetas: etiquetasOverride = [],
+    etiquetaDropdown: etiquetaDropdownOverride = '',
   } = fieldOverrides;
   const get = (key) => {
     const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
@@ -353,6 +354,14 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     etiquetas: Array.isArray(etiquetasOverride)
       ? etiquetasOverride.filter((tag) => typeof tag === 'string' && tag.trim() !== '')
       : [],
+    // La etiqueta que el operador eligió en el dropdown del panel. Viaja
+    // APARTE de `etiquetas` porque el form la recibe en un dropdown
+    // distinto ("¿Línea telefónica a la que se comunica?"), no en las
+    // casillas de "Etiquetas del contacto".
+    etiquetaDropdown:
+      typeof etiquetaDropdownOverride === 'string'
+        ? etiquetaDropdownOverride.trim()
+        : '',
   };
 }
 

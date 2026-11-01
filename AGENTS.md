@@ -144,6 +144,27 @@ y no son obligatorios.
 `Reapertura_Caido`, `Reapertura_Nip`, `Reapertura_Prospecto`, etc. La que se usa
 siempre es la simple — por eso está en `CONTACT_TAGS` y no en el dropdown.
 
+### La etiqueta del dropdown va a OTRO campo del form
+
+La etiqueta elegida en el dropdown del panel viaja **aparte** de las casillas:
+
+| Dato | Campo | Destino en el form |
+|------|-------|--------------------|
+| `parsed.etiquetas` (array) | Checkboxes "Etiquetas del contacto" | `fillCheckboxes` |
+| `parsed.etiquetaDropdown` (string) | Dropdown "¿Línea telefónica a la que se comunica?" (Pág 1) | `selectDropdownByHeading` |
+
+**Son catálogos DISTINTOS.** El dropdown del form tiene 63 opciones; las casillas
+tienen 88. Las que están en el dropdown y NO en las casillas:
+`Convertia Google eSIM` y `reapertura_IA_VOZ`. Las 38 opciones del panel están
+en **ambos** (verificado).
+
+Por eso `etiquetaDropdown` NO se mete en `parsed.etiquetas`: son dos campos
+diferentes del form y cada uno lleva lo suyo.
+
+El dropdown del form exige **coincidencia exacta** (`minScore = 95`): sin eso
+"Reapertura" haría match con "Reaperturas META" (prefijo, score 70) y se
+marcaría la etiqueta vecina. Las 38 opciones del panel matchean exacto (100).
+
 El texto canónico conserva la tilde (`Prospección IA`) y el matching con el form es
 **insensible a acentos y mayúsculas** (`normalizeLabel` en `content/utils.js`), así que el
 match sigue funcionando si el form escribe "Prospeccion IA".
@@ -318,6 +339,10 @@ Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
 - Radio **Producto** → `data.producto`.
 - Inputs: nombre cliente, fecha nacimiento, CURP (no línea nueva), DN contacto, email, id lead, dn chat.
 - Checkboxes **Etiquetas del contacto** → las marcadas en `data.etiquetas`.
+- Dropdown **¿Línea telefónica a la que se comunica?** → `data.etiquetaDropdown`
+  (la del dropdown del panel). Coincidencia **exacta** (`minScore = 95`): sin
+  ese umbral "Reapertura" matchearía "Reaperturas META". El heading del form
+  termina en `&nbsp;` — `normalizeLabel` lo colapsa.
 
 ### Página 2
 
@@ -344,6 +369,12 @@ Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
   elementos repetidos (el selector de bloques matchea la misma pregunta dos
   veces: contenedor `CP1oW` + hijo `geS5n`).
 - `findQuestionBlock`, `findQuestionBlocks`, `collectCheckboxes`, `toggleCheckbox` — supporting de los anteriores.
+- `selectDropdownByHeading(heading, valor, minScore)` — `minScore > 0` exige
+  coincidencia **exacta** (data-value o texto). Sin él, el matching laxo
+  (prefijo = 70, contiene = 50) puede marcar la opción vecina: en el catálogo
+  de etiquetas "Reapertura" haría match con "Reaperturas META". El dropdown de
+  etiquetas de la Pág 1 usa `minScore = 95`; el de planes usa `0` (porque
+  resuelve códigos cortos como "30" → "PLAN PRO 30").
 
 ### DOM real de los dropdowns de Google Forms
 
@@ -454,6 +485,14 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] Test: toda opción del dropdown existe en `FORM_TAGS`
 - [ ] No duplicar con `CONTACT_TAGS` (Reapertura / Prospección IA ya son checkboxes)
 
+### Etiqueta del dropdown hacia el form
+
+- [ ] `parsed.etiquetaDropdown` en `parser.js` (override + trim)
+- [ ] `getFieldOverrides()` en `popup.js` lo pasa como `etiquetaDropdown`
+- [ ] `fillPage1.js`: `selectDropdownByHeading` con `minScore = 95` (exacto)
+- [ ] Test: la opción matchea exacta contra el catálogo real del dropdown
+- [ ] Ojo: el catálogo del dropdown del form (63) ≠ el de las casillas (88)
+
 ### Nuevo producto
 
 - [ ] Botón en `.products-grid` con `data-product`
@@ -493,6 +532,8 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 6. Cambiar producto oculta/muestra grupos correctos sin perder cache de otros campos.
 7. Dropdown de etiquetas: elegir una, volver a elegir otra (reemplaza), recargar el
    panel (persiste) y **Limpiar** (vuelve al placeholder).
+8. Pág 1 → el dropdown **¿Línea telefónica a la que se comunica?** queda con la
+   etiqueta elegida (es un `<select>` del form, no las casillas).
 
 ---
 
@@ -506,7 +547,8 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, `formatPlanForOutput`, overrides |
 | `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS`, `CONTACT_TAG_OPTIONS`, `FORM_TAGS`, `mergeTagLabels` |
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
-| `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` con un mini-DOM simulado (sección repartida en varios bloques) |
+| `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` y `selectDropdownByHeading` con un mini-DOM simulado |
+| `tests/dropdown-tags.test.js` | Matching de las 38 etiquetas del panel contra el catálogo REAL del dropdown del form (63 opciones) |
 
 El resto del código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
 
@@ -551,3 +593,5 @@ tiene que contar la historia del producto, no la de la depuración.
 | Dropdown de etiqueta única, sin botón `+` ni chips | Del dropdown sólo se usa una etiqueta a la vez: el `value` del select es el estado y el form recibe una sola etiqueta extra |
 | Catálogo completo (`FORM_TAGS`) aparte del subconjunto del dropdown | `FORM_TAGS` es la referencia de qué existe en el form; el dropdown es lo que el operador usa |
 | "Reapertura" simple separada de las variantes `Reapertura_*` | Son checkboxes distintos en el form; la simple es la que se usa |
+| La etiqueta del dropdown va a OTRO campo (`etiquetaDropdown`) | El form tiene dos campos distintos: casillas "Etiquetas del contacto" (88 opciones) y dropdown "¿Línea telephone...?" (63 opciones). Son catálogos diferentes |
+| `minScore = 95` para el dropdown de etiquetas | Sin coincidencia exacta, "Reapertura" matchea "Reaperturas META" (prefijo) y se marca la etiqueta vecina |

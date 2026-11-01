@@ -611,6 +611,10 @@ function getFieldOverrides() {
     dnChat: valueOf('input-chat-dn'),
     eid: valueOf('input-eid'),
     etiquetas: getSelectedTags(),
+    // La etiqueta del dropdown viaja APARTE de `etiquetas`: el form la
+    // recibe en un dropdown distinto ("¿Línea telefónica a la que se
+    // comunica?"), no en las casillas de "Etiquetas del contacto".
+    etiquetaDropdown: getDropdownTag(),
   };
 }
 

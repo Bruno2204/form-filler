@@ -676,6 +676,43 @@ describe('parseData', () => {
     });
     expect(result.etiquetas).toEqual([]);
   });
+
+  it('devuelve la etiqueta del dropdown del panel', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetaDropdown: 'GOOGLE PMAX',
+    });
+    expect(result.etiquetaDropdown).toBe('GOOGLE PMAX');
+  });
+
+  it('devuelve la etiqueta del dropdown vacía cuando no hay override', () => {
+    const result = parseData('', 'POS_ESIM');
+    expect(result.etiquetaDropdown).toBe('');
+  });
+
+  it('hace trim a la etiqueta del dropdown', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetaDropdown: '  Orgánico PosPago  ',
+    });
+    expect(result.etiquetaDropdown).toBe('Orgánico PosPago');
+  });
+
+  it('ignora una etiqueta del dropdown que no es un string', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetaDropdown: 42,
+    });
+    expect(result.etiquetaDropdown).toBe('');
+  });
+
+  it('la etiqueta del dropdown viaja APARTE de las de las casillas', () => {
+    // Son dos destinos distintos en el form: las casillas de "Etiquetas
+    // del contacto" y el dropdown "¿Línea telephone...?".
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetas: ['Reapertura'],
+      etiquetaDropdown: 'GOOGLE PMAX',
+    });
+    expect(result.etiquetas).toEqual(['Reapertura']);
+    expect(result.etiquetaDropdown).toBe('GOOGLE PMAX');
+  });
 });
 
 // ─── Phase 4: Plan Normalization ────────────────────────────────────────────────
