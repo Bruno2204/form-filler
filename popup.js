@@ -4,7 +4,7 @@
 const PRODUCT_TEMPLATES = {
   POS_ESIM: (d) => `PORTABILIDAD POSPAGO ESIM
 EID: ${d.eid || ''}
-PLAN: ${d.plan || ''}
+PLAN: ${d.planShort || d.plan || ''}
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
 DN ADICIONAL: ${d.dnAdicional || 'SN'}
@@ -25,7 +25,7 @@ CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
   POS_CAC: (d) => `PORTABILIDAD POSPAGO CAC
-PLAN: ${d.plan || ''}
+PLAN: ${d.planShort || d.plan || ''}
 DN A PORTAR: ${d.dnPortar || ''}
 NIP: ${d.nip || ''}
 DN ADICIONAL: ${d.dnAdicional || 'SN'}
@@ -50,7 +50,7 @@ CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
   LN_ESIM: (d) => `LINEA NUEVA ESIM
-PLAN: ${d.plan || ''}
+PLAN: ${d.planShort || d.plan || ''}
 EID: ${d.eid || ''}
 CORREO: ${d.email || ''}
 
@@ -71,7 +71,7 @@ CÓDIGO POSTAL: ${d.cpDireccion || ''}
 COLONIA: ${d.colonia || ''}`,
 
   LN_CAC: (d) => `LINEA NUEVA CAC
-PLAN: ${d.plan || ''}
+PLAN: ${d.planShort || d.plan || ''}
 CORREO: ${d.email || ''}
 
 NOMBRE: ${d.nombres || ''}
@@ -127,7 +127,7 @@ CP: ${d.cpCAC || ''}
 FVC: ${d.fvc || ''}`,
 
   ADIC_CAC: (d) => `ADICION CAC
-PLAN: ${d.plan || ''}
+PLAN: ${d.planShort || d.plan || ''}
 DN MOVISTAR: ${d.dnMovistar || ''}
 
 DN CONTACTO: ${d.dnContacto || ''}
@@ -157,6 +157,15 @@ const ALL_INPUT_FIELDS = [
   'chat-id',
   'chat-dn',
   'eid',
+];
+
+// Etiquetas de la sección "Etiquetas del contacto" del Google Form.
+// Son checkboxes, no inputs de texto: por eso viven fuera de
+// ALL_INPUT_FIELDS (que asume campos de texto) y su grupo nunca se
+// oculta — están disponibles para todos los productos.
+const CONTACT_TAGS = [
+  { id: 'input-etiqueta-reapertura', label: 'Reapertura' },
+  { id: 'input-etiqueta-prospeccion-ia', label: 'Prospección IA' },
 ];
 
 const PHONE_FIELDS = ['dnPortar', 'dnAdicional', 'dnContacto', 'dnMovistar'];
@@ -199,7 +208,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fvc',
     'chatId',
     'dnChat',
-    'eid',
   ],
   LN_ESIM: [
     'plan',
@@ -234,7 +242,6 @@ const PRODUCT_REQUIRED_FIELDS = {
     'fvc',
     'chatId',
     'dnChat',
-    'eid',
   ],
   PRE_ESIM: [
     'email',
@@ -328,8 +335,25 @@ async function pasteIntoInput(inputEl) {
   }
 }
 
+// Copia texto al portapapeles. Usa un textarea temporal porque el
+// resultado formateado ya no vive en un input visible del panel.
+function copyText(text) {
+  const helper = document.createElement('textarea');
+  helper.value = text || '';
+  helper.setAttribute('readonly', '');
+  helper.style.position = 'fixed';
+  helper.style.opacity = '0';
+  document.body.appendChild(helper);
+  helper.select();
+  document.execCommand('copy');
+  document.body.removeChild(helper);
+}
+
 let activeProduct = 'POS_ESIM';
 let missingPanelOpen = false;
+// Último resultado formateado. No se muestra en el panel: el botón
+// "Copiar" lo manda al portapapeles.
+let lastResult = '';
 
 // Estado de interacción: qué campos han sido tocados al menos una vez.
 // Se usa para evitar mostrar inline alerts (phone-alert-*, chat-alert-*) en
@@ -388,6 +412,32 @@ function selectProduct(productKey) {
   processData();
 }
 
+// Overrides de los campos dedicados (plan, chat, eid, etiquetas).
+// Fuente única para processData y getAccumulatedData: si se duplican,
+// pueden divergir y el form recibe datos distintos a los mostrados.
+function getFieldOverrides() {
+  const valueOf = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  };
+
+  return {
+    plan: valueOf('input-plan'),
+    chatId: valueOf('input-chat-id'),
+    dnChat: valueOf('input-chat-dn'),
+    eid: valueOf('input-eid'),
+    etiquetas: getSelectedTags(),
+  };
+}
+
+// Etiquetas de contacto marcadas por el operador.
+function getSelectedTags() {
+  return CONTACT_TAGS.filter((tag) => {
+    const el = document.getElementById(tag.id);
+    return !!(el && el.checked);
+  }).map((tag) => tag.label);
+}
+
 // Procesa y formatea los datos recopilados de los textareas visibles
 function processData() {
   const allowedFields = PRODUCT_FIELDS[activeProduct] || [];
@@ -414,20 +464,7 @@ function processData() {
     document.getElementById('input-direccion')
       ? document.getElementById('input-direccion').value
       : '',
-    {
-      plan: document.getElementById('input-plan')
-        ? document.getElementById('input-plan').value
-        : '',
-      chatId: document.getElementById('input-chat-id')
-        ? document.getElementById('input-chat-id').value
-        : '',
-      dnChat: document.getElementById('input-chat-dn')
-        ? document.getElementById('input-chat-dn').value
-        : '',
-      eid: document.getElementById('input-eid')
-        ? document.getElementById('input-eid').value
-        : '',
-    },
+    getFieldOverrides(),
   );
 
   // Mapear "producto" para autocompletado en Google Forms si es necesario
@@ -441,7 +478,26 @@ function processData() {
   const formatter = PRODUCT_TEMPLATES[activeProduct];
   const formattedResult = formatter ? formatter(parsed) : '';
 
-  document.getElementById('result-final').value = formattedResult;
+  // El resultado no se muestra en el panel: queda en memoria y se copia
+  // con el botón "Copiar".
+  lastResult = formattedResult;
+
+  updatePlanPreview(parsed);
+}
+
+// Muestra cómo se resuelve el plan escrito por el operador.
+// Ej.: el operador escribe "30" y el form va a recibir "Pro 30".
+function updatePlanPreview(parsed) {
+  const preview = document.getElementById('plan-preview');
+  if (!preview) return;
+
+  const raw = parsed.planRaw || '';
+  const resolved = parsed.plan || '';
+  if (!raw || !resolved || raw === resolved) {
+    preview.textContent = '';
+    return;
+  }
+  preview.textContent = `${raw} → ${resolved}`;
 }
 
 function isFieldEmpty(value) {
@@ -703,9 +759,7 @@ if (typeof document !== 'undefined') {
   });
 
   document.getElementById('btnCopy').addEventListener('click', () => {
-    const resultText = document.getElementById('result-final');
-    resultText.select();
-    document.execCommand('copy');
+    copyText(lastResult);
 
     const copyBtn = document.getElementById('btnCopy');
     copyBtn.textContent = '¡Copiado!';
@@ -724,7 +778,12 @@ if (typeof document !== 'undefined') {
       if (el) el.value = '';
       localStorage.removeItem(`input_cache_${field}`);
     });
-    document.getElementById('result-final').value = '';
+    CONTACT_TAGS.forEach((tag) => {
+      const el = document.getElementById(tag.id);
+      if (el) el.checked = false;
+      localStorage.removeItem(`input_cache_${tag.id}`);
+    });
+    lastResult = '';
     document.getElementById('phone-alert-portar').style.display = 'none';
     document.getElementById('phone-alert-adicional').style.display = 'none';
     document.getElementById('phone-alert-contacto').style.display = 'none';
@@ -753,6 +812,17 @@ if (typeof document !== 'undefined') {
       if (!el) return;
       const saved = localStorage.getItem(`input_cache_${field}`);
       if (saved) el.value = saved;
+    });
+
+    // Restaurar las etiquetas de contacto marcadas
+    CONTACT_TAGS.forEach((tag) => {
+      const el = document.getElementById(tag.id);
+      if (!el) return;
+      el.checked = localStorage.getItem(`input_cache_${tag.id}`) === '1';
+      el.addEventListener('change', () => {
+        localStorage.setItem(`input_cache_${tag.id}`, el.checked ? '1' : '0');
+        processData();
+      });
     });
 
     // Restaurar producto activo
@@ -827,57 +897,34 @@ function getAccumulatedData() {
     document.getElementById('input-direccion')
       ? document.getElementById('input-direccion').value
       : '',
-    {
-      plan: document.getElementById('input-plan')
-        ? document.getElementById('input-plan').value
-        : '',
-      chatId: document.getElementById('input-chat-id')
-        ? document.getElementById('input-chat-id').value
-        : '',
-      dnChat: document.getElementById('input-chat-dn')
-        ? document.getElementById('input-chat-dn').value
-        : '',
-      eid: document.getElementById('input-eid')
-        ? document.getElementById('input-eid').value
-        : '',
-    },
+    getFieldOverrides(),
   );
   parsed.producto = getCleanProductName(activeProduct, parsed.esEsim);
   return parsed;
 }
 
-// Manda a rellenar la página N ejecutando fillPageN sobre la pestaña activa.
-// content/index.js se inyecta automáticamente vía content_scripts (manifest.json).
-async function runFillerOnPage(pageFunctionName) {
-  const data = getAccumulatedData();
+// Muestra un mensaje en la barra de estado por un tiempo dado.
+function setStatus(message, duration = 3000) {
   const status = document.getElementById('status');
-  if (!data) return;
+  if (!status) return;
+  status.textContent = message;
+  setTimeout(() => {
+    status.textContent = '';
+  }, duration);
+}
 
-  const { valid } = validateRequiredData(data, activeProduct);
-  if (!valid) {
-    status.textContent =
-      '⚠ Completa todos los datos requeridos antes de rellenar.';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
-    return;
-  }
-
+// Ejecuta una función del content script en la pestaña activa.
+// Devuelve el resultado del content script, o null si no se pudo ejecutar.
+async function executeOnForm(pageFunctionName, data) {
   const tab = await getTab();
   if (!tab?.id) {
-    status.textContent = '⚠ No se encontró una pestaña activa.';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
-    return;
+    setStatus('⚠ No se encontró una pestaña activa.');
+    return null;
   }
 
   if (!tab.url?.startsWith('https://docs.google.com/forms/')) {
-    status.textContent = '⚠ Abre un Google Form en la pestaña activa.';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
-    return;
+    setStatus('⚠ Abre un Google Form en la pestaña activa.');
+    return null;
   }
 
   try {
@@ -895,34 +942,52 @@ async function runFillerOnPage(pageFunctionName) {
         if (typeof fn !== 'function') {
           return {
             ok: false,
-            error: `window.FormFiller.${pageFuncStr} no es función (${typeof fn}). Recargá la pestaña del form.`,
+            error: `window.FormFiller.${pageFuncStr} no es función (${typeof fn}). Recargá la extensión y la pestaña del form.`,
           };
         }
         return await fn(d);
       },
-      args: [pageFunctionName, data],
+      // Chrome sólo acepta args serializables: si no hay datos (botón de
+      // prueba), se manda sólo el nombre de la función.
+      args: data === undefined ? [pageFunctionName] : [pageFunctionName, data],
     });
 
-    const r = results?.[0]?.result;
-    if (r?.ok) {
-      status.textContent = `✅ ${r.filled} campo(s) rellenados.`;
-      setTimeout(() => {
-        status.textContent = '';
-      }, 2000);
-    } else {
-      const errMsg = r?.error ? `: ${r.error}` : '';
-      status.textContent = `⚠ No se pudieron rellenar los campos${errMsg}`;
-      setTimeout(() => {
-        status.textContent = '';
-      }, 5000);
-    }
+    return results?.[0]?.result || null;
   } catch (err) {
     console.error(err);
-    status.textContent =
-      '⚠ Sin permiso para esta página. Recarga la extensión.';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
+    setStatus('⚠ Sin permiso para esta página. Recarga la extensión.');
+    return null;
+  }
+}
+
+// Manda a rellenar la página N ejecutando fillPageN sobre la pestaña activa.
+// content/index.js se inyecta automáticamente vía content_scripts (manifest.json).
+async function runFillerOnPage(pageFunctionName) {
+  const data = getAccumulatedData();
+  if (!data) return;
+
+  const { valid } = validateRequiredData(data, activeProduct);
+  if (!valid) {
+    setStatus('⚠ Completa todos los datos requeridos antes de rellenar.');
+    return;
+  }
+
+  const r = await executeOnForm(pageFunctionName, data);
+  if (!r) return;
+
+  if (r.ok) {
+    const failed = r.failed || [];
+    if (failed.length > 0) {
+      setStatus(
+        `⚠ ${r.filled} campo(s) rellenados. No se pudo: ${failed.join(', ')}.`,
+        6000,
+      );
+    } else {
+      setStatus(`✅ ${r.filled} campo(s) rellenados.`, 2000);
+    }
+  } else {
+    const errMsg = r?.error ? `: ${r.error}` : '';
+    setStatus(`⚠ No se pudieron rellenar los campos${errMsg}`, 5000);
   }
 }
 
@@ -961,5 +1026,6 @@ if (typeof module !== 'undefined' && module.exports) {
     PRODUCT_FIELDS,
     PRODUCT_REQUIRED_FIELDS,
     ALL_INPUT_FIELDS,
+    CONTACT_TAGS,
   };
 }

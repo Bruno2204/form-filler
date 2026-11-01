@@ -15,6 +15,7 @@ import {
   ALL_INPUT_FIELDS,
   PRODUCT_FIELDS,
   PRODUCT_REQUIRED_FIELDS,
+  CONTACT_TAGS,
 } from '../popup.js';
 
 // ESIM product set is the source of truth for esEsim gating in validateRequiredData.
@@ -188,6 +189,37 @@ describe('getCleanProductName', () => {
 
 // ─── Phase 2: Constants Structure ────────────────────────────────────────────
 
+describe('CONTACT_TAGS', () => {
+  it('expone las etiquetas frecuentes de la sección "Etiquetas del contacto"', () => {
+    expect(CONTACT_TAGS.map((tag) => tag.label)).toEqual([
+      'Reapertura',
+      'Prospección IA',
+    ]);
+  });
+
+  it('guarda la tilde en la etiqueta (texto canónico del form)', () => {
+    const prospection = CONTACT_TAGS.find(
+      (tag) => tag.label === 'Prospección IA',
+    );
+    expect(prospection).toBeDefined();
+    expect(prospection.id).toBe('input-etiqueta-prospeccion-ia');
+  });
+
+  it('no forma parte de ALL_INPUT_FIELDS (son checkboxes, no campos de texto)', () => {
+    // Si entraran, el panel intentaría leer .value de un checkbox.
+    expect(ALL_INPUT_FIELDS).not.toContain('etiquetas');
+    for (const tag of CONTACT_TAGS) {
+      expect(ALL_INPUT_FIELDS).not.toContain(tag.id);
+    }
+  });
+
+  it('las etiquetas no son campos obligatorios de ningún producto', () => {
+    for (const productKey of Object.keys(PRODUCT_REQUIRED_FIELDS)) {
+      expect(PRODUCT_REQUIRED_FIELDS[productKey]).not.toContain('etiquetas');
+    }
+  });
+});
+
 describe('constants structure', () => {
   describe('FIELD_LABELS', () => {
     it('has an entry for dnSame', () => {
@@ -260,13 +292,14 @@ describe('constants structure', () => {
       }
     });
 
-    it('lists eid for the 5 eid-capable products (POS_ESIM, POS_CAC, LN_ESIM, LN_CAC, PRE_ESIM)', () => {
-      // eid is listed in PRODUCT_REQUIRED_FIELDS for any product that may
-      // require it, and validateRequiredData gates the actual check on
-      // d.esEsim. The 2 eid-free products (PREPAGO, ADIC_CAC) are
-      // hardware-bound (CAC only) and never have an EID.
-      const withEid = ['POS_ESIM', 'POS_CAC', 'LN_ESIM', 'LN_CAC', 'PRE_ESIM'];
-      const withoutEid = ['PREPAGO', 'ADIC_CAC'];
+    it('lists eid only for the ESIM products (POS_ESIM, LN_ESIM, PRE_ESIM)', () => {
+      // eid es obligatorio únicamente en productos ESIM: el EID es el
+      // identificador del equipo eSIM. En los productos CAC (POS_CAC,
+      // LN_CAC) el campo ni existe en el panel, así que no tiene sentido
+      // listarlo. validateRequiredData igual gatea el chequeo por
+      // d.esEsim, pero la lista ya no miente.
+      const withEid = ['POS_ESIM', 'LN_ESIM', 'PRE_ESIM'];
+      const withoutEid = ['POS_CAC', 'LN_CAC', 'PREPAGO', 'ADIC_CAC'];
 
       for (const key of withEid) {
         expect(PRODUCT_REQUIRED_FIELDS[key], `${key} should list eid`).toContain('eid');
