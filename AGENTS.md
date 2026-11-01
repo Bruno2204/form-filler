@@ -459,12 +459,35 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 
 | Archivo | Qué cubre |
 |---------|-----------|
-| `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, overrides |
+| `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, `formatPlanForOutput`, overrides |
 | `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS` |
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
 
-El código DOM de `content/` **no** tiene tests: se verifica con el botón de prueba y a mano
-contra el form real.
+El código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
+
+---
+
+## Trampas de Git en Windows
+
+- **Nunca** `git show :archivo | Set-Content archivo`: PowerShell decodifica la salida con
+  el code page de la consola y la reescribe como UTF-8 → **mojibake** (`García` →
+  `GarcÃ-a`, `─` → `ÔöÇ`) y el blob commiteado queda corrupto. Usar
+  `cmd /c "git show :archivo > archivo"` (redirección cruda) o `[IO.File]::WriteAllText`.
+- Al escribir archivos con acentos desde PowerShell, usar
+  `[IO.File]::WriteAllText($path, $texto, (New-Object Text.UTF8Encoding($false)))`
+  (sin BOM).
+- `git add -p` con la entrada pipeada se puede quedar sin respuestas y dejar hunks sin
+  staged: **siempre** revisar `git diff --cached` antes de commitear, y verificar que el
+  árbol del commit nuevo sea el esperado (`git rev-parse 'HEAD^{tree}'`).
+
+---
+
+## Commits
+
+Un commit = una unidad de trabajo revisable (feature, fix, docs), con sus tests en el
+mismo commit. Sin atribución de IA ni `Co-Authored-By`. Si un fix sale de una sesión de
+debugging, se **aplastan** los commits iterativos antes de mergear: el historial final
+tiene que contar la historia del producto, no la de la depuración.
 
 ---
 
