@@ -9,7 +9,7 @@ Extensión Chrome (Manifest V3) que:
 1. Recibe bloques de texto pegados por el operador (datos de línea, CURP, dirección, CAC, chat, etc.).
 2. Los parsea y valida según el **tipo de producto** seleccionado.
 3. Muestra un **resultado formateado** listo para copiar.
-4. **Autocompleta** un Google Form (`docs.google.com/forms/*`) en 3 páginas mediante inyección de `content.js`.
+4. **Autocompleta** un Google Form (`docs.google.com/forms/*`) en 3 páginas mediante los content scripts de `content/`.
 
 La UI vive en el **panel lateral** (`side_panel` → `popup.html`). No hay popup clásico ni botón flotante en la página.
 
@@ -19,22 +19,32 @@ La UI vive en el **panel lateral** (`side_panel` → `popup.html`). No hay popup
 
 | Archivo | Rol |
 |---------|-----|
-| `manifest.json` | MV3: permisos, side panel, service worker |
+| `manifest.json` | MV3: permisos, side panel, service worker, orden de los content scripts |
 | `background.js` | Abre el side panel al clic en el icono de la extensión |
-| `popup.html` | UI: estilos inline, inputs, botones, resultado |
+| `popup.html` | UI: estilos inline, inputs, checkboxes, botones, resultado |
 | `popup.js` | Lógica UI, plantillas, validación, inyección al form |
 | `parser.js` | Parseo heurístico de textareas → objeto `parsed` |
-| `content.js` | `window.FormFiller`: relleno DOM en Google Forms |
+| `content/constants.js` | `SELECTORS` del DOM de Google Forms |
+| `content/utils.js` | Helpers puros: normalización de texto, matching de opciones |
+| `content/helpers.js` | Helpers DOM: `setInput`, `findInputByLabel`, `selectDropdownOption`, `fillCheckboxes` |
+| `content/fillPage1.js` | Relleno de la página 1 (incluye las etiquetas de contacto) |
+| `content/fillPage2.js` | Relleno de la página 2 (forma de envío) |
+| `content/fillPage3.js` | Relleno de la página 3 (plan elegido, género, EID…) |
+| `content/index.js` | Expone `window.FormFiller` |
 
 ```
 Usuario pega datos → popup.js (processData)
                          ↓
                    parser.js (parseData)
                          ↓
-              PRODUCT_TEMPLATES → #result-final
+              PRODUCT_TEMPLATES → lastResult → botón Copiar
                          ↓
-         btn1/btn2/btn3 → chrome.scripting → content.js
+         btn1/btn2/btn3 → chrome.scripting → content/fillPageN.js
 ```
+
+Los content scripts se cargan solos vía `content_scripts` del manifest (en orden):
+`constants` → `utils` → `helpers` → `fillPage1` → `fillPage2` → `fillPage3` → `index`.
+Al agregar un archivo nuevo, agregarlo también al manifest.
 
 ---
 
@@ -90,7 +100,7 @@ Convención de IDs: `input-{field}` y `group-{field}`.
 
 | Campo | ID input | Tipo | Contenido esperado |
 |-------|----------|------|-------------------|
-| Plan | `input-plan` | text | Nombre del plan (campo dedicado, no va en línea) |
+| Plan | `input-plan` | text | Nombre o código corto del plan (campo dedicado, no va en línea) |
 | Línea | `input-linea` | textarea | DN, NIP, correo (heurístico por línea) |
 | CURP | `input-curp` | textarea | Nombre, apellidos, CURP, sexo, fecha, estado |
 | Dirección | `input-direccion` | textarea | Calle, CP, colonia, números |
@@ -98,6 +108,17 @@ Convención de IDs: `input-{field}` y `group-{field}`.
 | Chat ID | `input-chat-id` | text | ID del chat / lead |
 | Chat DN | `input-chat-dn` | text | DN Respond (`+52…`) |
 | EID | `input-eid` | text | 5 dígitos (solo productos ESIM) |
+| Etiquetas | `input-etiqueta-*` | checkbox | Reapertura / Prospección IA (visibles en **todos** los productos) |
+
+### Etiquetas del contacto
+
+Los checkboxes **no** son campos de texto: viven en `CONTACT_TAGS` (`popup.js`), fuera de
+`ALL_INPUT_FIELDS` (que asume `input-{field}.value`). Su grupo nunca se oculta y no son
+obligatorios. Se cachean como `input_cache_{id}` con `'1'` / `'0'` y se desmarcan con **Limpiar**.
+
+El texto canónico conserva la tilde (`Prospección IA`) y el matching con el form es
+**insensible a acentos y mayúsculas** (`normalizeLabel` en `content/utils.js`), así que el
+match sigue funcionando si el form escribe "Prospeccion IA".
 
 ### Visibilidad por producto (`PRODUCT_FIELDS` en `popup.js`)
 
@@ -125,8 +146,12 @@ PRODUCT_FIELDS = {
 Campos dedicados pasados al parser vía `getFieldOverrides()`:
 
 ```javascript
-{ plan, chatId, dnChat, eid }  // desde input-plan, input-chat-id, input-chat-dn, input-eid
+{ plan, chatId, dnChat, eid, etiquetas }
+// desde input-plan, input-chat-id, input-chat-dn, input-eid y los checkboxes marcados
 ```
+
+`getFieldOverrides()` es la **fuente única**: la usan `processData` y `getAccumulatedData`,
+así el form nunca recibe datos distintos de los que muestra el panel.
 
 ---
 
@@ -140,7 +165,30 @@ parseData(raw, productKey, lineaRawText, cacRawText, direccionRawText, fieldOver
 
 - `raw`: texto concatenado de campos visibles (para regex `ETIQUETA: valor`).
 - `lineaRawText`, `cacRawText`, `direccionRawText`: textareas específicos.
-- `fieldOverrides`: `{ plan, chatId, dnChat, eid }` — **prioridad sobre heurística**.
+- `fieldOverrides`: `{ plan, chatId, dnChat, eid, etiquetas }` — **prioridad sobre heurística**.
+
+### Plan: normalización (`normalizePlan`)
+
+El dropdown **Plan elegido** del form ofrece exactamente:
+
+`Prepago`, `PLAN PRO 11`, `PLAN PRO 13 ILIMITADO`, `PLAN PRO 16`, `PLAN PRO 20`,
+`PLAN PRO 30`, `PLAN PRO ILIMITADO`, `PLAN 10`.
+
+`PLAN_OPTIONS` (lista real del form) y `PLAN_ALIASES` (código corto → plan canónico) son la
+fuente de verdad en `parser.js`:
+
+| El operador escribe | Se resuelve a |
+|---------------------|---------------|
+| `30`, `20`, `16`, `11`, `10` | `PLAN PRO 30`, `PLAN PRO 20`, `PLAN PRO 16`, `PLAN PRO 11`, `PLAN 10` |
+| `13` | `PLAN PRO 13 ILIMITADO` |
+| `ilimitado` | `PLAN PRO ILIMITADO` |
+| `pro 30`, `PRO 30`, `plan pro 30` | `PLAN PRO 30` |
+| `pro 13 ilimitado` | `PLAN PRO 13 ILIMITADO` |
+| texto libre (`Plan Anual`) | sin cambios |
+
+El plan ya normalizado viaja al **resultado formateado** y al dropdown del form.
+El panel muestra la resolución en vivo bajo el input (`30 → PLAN PRO 30`).
+Si cambia la lista de opciones del form, actualizar `PLAN_OPTIONS` y `PLAN_ALIASES`.
 
 ### Reglas heurísticas
 
@@ -183,7 +231,12 @@ Misma regla aplica a `data.dn` (que se usa en `fillPage1` para el campo "DN de c
 
 Campos clave usados downstream:
 
-`nombres`, `apellido1`, `apellido2`, `nombreCompleto`, `email`, `plan`, `nip`, `dnPortar`, `dnAdicional`, `dnContacto`, `dnMovistar`, `dn` (= dnContacto), `curp`, `fecha`, `genero`, `lugarNacimiento`, `calle`, `numExt`, `numInt`, `cpDireccion`, `colonia`, `nombreCAV`, `cpCAC`, `fvc`, `chatId`, `dnChat`, `eid`, `eidValid`, `nombreTitular`, `esEsim`, `esCAC`, `producto` (añadido en popup.js).
+`nombres`, `apellido1`, `apellido2`, `nombreCompleto`, `email`, `plan`, `planRaw`, `planShort`, `nip`, `dnPortar`, `dnAdicional`, `dnContacto`, `dnMovistar`, `dn` (= dnContacto), `curp`, `fecha`, `genero`, `lugarNacimiento`, `calle`, `numExt`, `numInt`, `cpDireccion`, `colonia`, `nombreCAV`, `cpCAC`, `fvc`, `chatId`, `dnChat`, `eid`, `eidValid`, `nombreTitular`, `esEsim`, `esCAC`, `etiquetas`, `producto` (añadido en popup.js).
+
+- `plan` → plan ya normalizado y **completo** (`PLAN PRO 20`): es lo que recibe el dropdown del form.
+- `planShort` → la forma **corta** (`PRO 20`): es lo que se muestra en "PLAN:" del resultado formateado.
+- `planRaw` → lo que escribió el operador (se usa para el preview `30 → PLAN PRO 30`).
+- `etiquetas` → array con las etiquetas de contacto marcadas.
 
 ---
 
@@ -205,17 +258,21 @@ Reglas especiales:
 
 ## Resultado formateado
 
-`PRODUCT_TEMPLATES[activeProduct](parsed)` genera el texto de `#result-final`.
+`PRODUCT_TEMPLATES[activeProduct](parsed)` genera el texto del resultado.
 
-Es **independiente** del autocompletado del form, pero debe mantener coherencia con los mismos datos parseados.
+**El panel NO lo muestra**: no hay título "Resultado Formateado" ni textarea. El texto
+queda en la variable `lastResult` (`popup.js`) y el botón verde **Copiar** lo manda al
+portapapeles con `copyText()` (textarea temporal + `execCommand('copy')`).
 
-Botón **Copiar** usa `document.execCommand('copy')` (no requiere `clipboardRead`).
+Para verlo, hay que copiarlo. Al agregar campos a las plantillas, verificar que el texto
+siga siendo lo que el operador espera pegar en el sistema de destino.
 
 ---
 
-## Autocompletado Google Form (`content.js`)
+## Autocompletado Google Form (`content/`)
 
-Inyectado bajo demanda con `chrome.scripting.executeScript`. API global:
+Los content scripts se inyectan solos vía `content_scripts` del manifest (no hace falta
+`executeScript` para cargarlos). API global:
 
 ```javascript
 window.FormFiller.fillPage1(data)
@@ -223,11 +280,16 @@ window.FormFiller.fillPage2(data)
 window.FormFiller.fillPage3(data)
 ```
 
+Cada `fillPageN` devuelve `{ ok, filled, failed[] }`: `failed` lista los campos que **no**
+se pudieron rellenar, y el panel los muestra ("⚠ 8 campos rellenados. No se pudo: Plan elegido").
+Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
+
 ### Página 1
 
 - Dropdown **Nombre** → fijo `"Bruno"`.
 - Radio **Producto** → `data.producto`.
 - Inputs: nombre cliente, fecha nacimiento, CURP (no línea nueva), DN contacto, email, id lead, dn chat.
+- Checkboxes **Etiquetas del contacto** → las marcadas en `data.etiquetas`.
 
 ### Página 2
 
@@ -237,14 +299,74 @@ window.FormFiller.fillPage3(data)
 ### Página 3
 
 - DN portar (o `"En espera"` en línea nueva), NIP, número orden, lugar nacimiento, género, ESIM sí/no, línea nueva, equipo EID, FVC (CAC), plan elegido, últimos 5 dígitos EID.
+- Dropdown **Usuario Backend** → siempre `"CHT00096"` (fijo, como el nombre "Bruno").
 
-### Helpers DOM
+### Helpers DOM (`content/helpers.js`)
 
 - `setInput` — setter nativo + eventos `input`/`change`/`blur`.
 - `findInputByLabel` — busca por texto en `.M7eMe`.
-- `selectDropdownOption` — ArrowDown + Enter en listbox de Google Forms.
+- `selectDropdownOption` — abre el listbox, matchea por `data-value` → texto exacto →
+  número de plan, hace **click directo** en la opción y **verifica** que quedó
+  seleccionada. Devuelve `{ ok, label, error }`.
+- `fillCheckboxes` — marca los checkboxes de una sección (ej. "Etiquetas del contacto")
+  verificando `aria-checked`. Lo que el operador no marcó se deja como esté.
+- `findQuestionBlock`, `collectCheckboxes`, `toggleCheckbox` — supporting de los anteriores.
 
-**Fragilidad**: selectores acoplados al DOM de Google Forms (`div[jsmodel="CP1oW"]`, `.M7eMe`, `div[role="radio"]`). Cambios en el form pueden romper el relleno sin afectar parseo/plantillas.
+### DOM real de los dropdowns de Google Forms
+
+Verificado contra el form real (experimento del botón de prueba). **Ojo: el click
+sintético NO es un click de usuario y hay que respectar esta mecánica:**
+
+- El trigger es `div[role="listbox"]` (`jsname="W85ice"`) y las opciones cuelgan de
+  él: `div[role="option"][data-value="…"]`.
+- **El click va al div interno** (`div[jsname="LgbsSe"]`), no al listbox. Google Forms
+  delega los handlers por `jsname`: el handler del listbox espera `LgbsSe`, así que
+  clickear el `div[role=listbox]` no dispara nada.
+- **Para abrir van `mousedown` + `mouseup`, y NADA de `click`**: el `mouseup` abre el
+  menú y el `click` lo vuelve a cerrar (por eso se veía abrir dos veces). El `click`
+  se reserva para elegir la opción.
+- Si el operador dejó el dropdown abierto a mano, no se manda ningún evento (el
+  `mouseup` haría toggle y lo cerraría).
+- `aria-expanded="true"` del trigger es la única señal fiable de que el menú abrió.
+  Las opciones **siempre están en el DOM** (con el menú cerrado están recortadas pero
+  conservan su layout), así que su visibilidad no dice nada.
+- Al abrir, las opciones **se mueven** al popup (`div.OA0qNb`), y el popup **se va del
+  bloque de la pregunta** (al body). Hay que elegir la opción que está **fuera** del
+  trigger (`findVisibleOption`): la original queda recortada y no recibe el click.
+- Al seleccionar, la opción vuelve al trigger con `aria-selected="true"` (y
+  `tabindex="0"`). El marcador puede quedar en la original o en la copia: la
+  verificación busca `aria-selected` en **todas** las opciones con ese `data-value`.
+- La primera opción es el placeholder (`data-value=""`, texto "Elegir") → se descarta.
+- La **misma página tiene varios dropdowns** con sus opciones en el DOM (pág. 1:
+  "Nombre" con 25 y "Producto" con 64). Además, al abrir un dropdown, los popups de
+  los OTROS pueden quedar visibles: nunca se buscan las opciones "en general", se
+  toman del popup del dropdown que se está llenando.
+- **Nunca barrer el menú con las flechas**: deja el dropdown scrolleado al final y
+  el form hecho un bollo. Si el click no selecciona, se informa el fallo.
+- Efecto colateral: al abrir/cerrar el menú, el trigger puede quedar con opciones
+  duplicadas (25 → 50) hasta la siguiente apertura. No afecta: el matching es por
+  `data-value` y al abrir se elige la copia del popup.
+
+### Matching de opciones (`content/utils.js`, funciones puras y testeables)
+
+`optionMatchScore` ordena: `data-value` exacto (100) > texto exacto (95) > número de plan
+(90/88) > prefijo (70/65) > contiene (50/45). `findBestOption` elige el mejor y desempata
+por etiqueta más corta. La comparación es **insensible a acentos y mayúsculas**.
+
+**Fragilidad**: selectores acoplados al DOM de Google Forms (`div[jsmodel="CP1oW"]`,
+`div.geS5n`, `.M7eMe`, `div[role="radio"]`, `div[role="checkbox"]`). Cambios en el form
+pueden romper el relleno sin afectar parseo/plantillas.
+
+### OJO: la pregunta aparece DOS veces en el DOM
+
+El selector de bloques `div[jsmodel="CP1oW"], div.geS5n` matchea **la misma pregunta dos
+veces** (el contenedor `CP1oW` y su hijo `geS5n`). Consecuencias:
+
+- Rellenar **por heading** (`selectDropdownByHeading`) llenaba el mismo dropdown dos
+  veces: se veía abrir y cerrar dos veces. Ahora se agrupan los bloques por **identidad
+  del trigger** (un trigger = un dropdown).
+- El resto del código (radio, inputs, dropdowns con `break`) toma solo el primer match,
+  así que no sufre el duplicado.
 
 ---
 
@@ -254,6 +376,7 @@ window.FormFiller.fillPage3(data)
 |-------|-----------|
 | `active_product` | Clave de producto activo |
 | `input_cache_{field}` | Valor de cada input (`plan`, `linea`, `curp`, …) |
+| `input_cache_{input-etiqueta-*}` | Estado de cada checkbox de etiquetas (`'1'` / `'0'`) |
 
 Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en chat-id / chat-dn / eid al cargar.
 
@@ -261,7 +384,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 
 ## UI — convenciones actuales
 
-- Panel lateral compacto; resultado sin fondo gris.
+- Panel lateral compacto; **sin** bloque de resultado visible (solo el botón Copiar y los datos faltantes).
 - Botón pegar: icono `⎘`, 22×22 px, clase `.btn-paste`.
 - Productos: grid 4 columnas, clase `.btn-product.active`.
 - **Eliminado**: `floating-button.js` y modal iframe — no reintroducir sin petición explícita.
@@ -279,25 +402,42 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] `PRODUCT_REQUIRED_FIELDS` si es obligatorio
 - [ ] `PRODUCT_TEMPLATES` si aparece en resultado
 - [ ] `FIELD_LABELS` para panel de faltantes
-- [ ] `content.js` si debe rellenar un campo del form
+- [ ] `content/` si debe rellenar un campo del form
 - [ ] Validación inline si aplica (teléfono, EID, etc.)
+
+### Nuevo checkbox (etiqueta de contacto)
+
+- [ ] `CONTACT_TAGS` en `popup.js` (id + label canónico con tilde)
+- [ ] HTML: `input-etiqueta-*` en `group-etiquetas` + estilo `.checkbox-item`
+- [ ] Cache `input_cache_{id}` y reset en **Limpiar**
+- [ ] `parsed.etiquetas` (array) y `fillCheckboxes` en `content/helpers.js`
+- [ ] Test de matching con y sin tilde
 
 ### Nuevo producto
 
 - [ ] Botón en `.products-grid` con `data-product`
 - [ ] Las 4 tablas en `popup.js` (fields, required, template, clean name)
 - [ ] Reglas en `parseLineaField` si la asignación de teléfonos difiere
-- [ ] Lógica ESIM/CAC en `content.js` fillPage2/3
+- [ ] Lógica ESIM/CAC en `content/fillPage2/3`
 
 ### Cambios en parser
 
-- [ ] Verificar que `processData` y `getAccumulatedData` pasan los mismos argumentos
-- [ ] No romper `fieldOverrides` para plan/chat/eid
+- [ ] Verificar que `processData` y `getAccumulatedData` usan `getFieldOverrides()`
+- [ ] No romper `fieldOverrides` para plan/chat/eid/etiquetas
+- [ ] Si cambia el plan del form: actualizar `PLAN_OPTIONS` y `PLAN_ALIASES`
+
+### Cambios en el selector de dropdown
+
+- [ ] La lógica de matching va en `content/utils.js` ( pura, testeable)
+- [ ] `tests/dropdown.test.js` actualizado
+- [ ] Verificar el dropdown sobre el form real (Pág 1 para "Nombre", Pág 3 para "Plan
+      elegido" y "Usuario Backend")
 
 ### Cambios en manifest
 
 - [ ] JSON válido (sin comas finales)
 - [ ] Documentar permiso nuevo en este archivo
+- [ ] Content script nuevo listado en `content_scripts` (en orden)
 
 ---
 
@@ -306,9 +446,25 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 1. Recargar extensión en `chrome://extensions`.
 2. Por cada producto: pegar datos de prueba → verificar resultado formateado y badge de faltantes.
 3. Botón ⎘ en cada input (requiere `clipboardRead`).
-4. Abrir Google Form → Pág 1/2/3 con datos completos.
-5. **Limpiar** borra inputs, cache y alertas.
+4. Abrir Google Form → Pág 1 (Nombre → Bruno, Producto, etiquetas) / Pág 2 / Pág 3
+   (Plan elegido, Usuario Backend → CHT00096, Equipo Modelo → EID).
+5. **Limpiar** borra inputs, cache, alertas y desmarca las etiquetas.
 6. Cambiar producto oculta/muestra grupos correctos sin perder cache de otros campos.
+
+---
+
+## Pruebas automatizadas
+
+`npm test` (vitest). Cobertura:
+
+| Archivo | Qué cubre |
+|---------|-----------|
+| `tests/parser.test.js` | `parser.js`: parseo, `normalizePlan`, plan aliases, overrides |
+| `tests/popup.test.js` | `popup.js`: constantes, validación, plantillas, `CONTACT_TAGS` |
+| `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
+
+El código DOM de `content/` **no** tiene tests: se verifica con el botón de prueba y a mano
+contra el form real.
 
 ---
 
@@ -320,3 +476,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | Plan / chat / EID en inputs separados | Pegado granular por campo |
 | `clipboardRead` en manifest | API Clipboard en side panel |
 | Plan fuera de `parseLineaField` | Campo dedicado `input-plan` |
+| Matching de planes por `data-value` + número de plan | "30" no debe elegir "Pro 130" |
+| Texto canónico con tilde + matching insensible a acentos | El form puede cambiar "Prospección" por "Prospeccion" |
+| Las etiquetas NO van en el Resultado Formateado | Solo se usan para el Google Form |
+| Checkboxes de etiquetas fuera de `ALL_INPUT_FIELDS` | Ese array asume inputs de texto |
