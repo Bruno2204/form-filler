@@ -27,6 +27,98 @@ function formatDnChat(phoneStr) {
   return trimmed.startsWith('+') ? trimmed : '+52' + digits;
 }
 
+// Planes disponibles en el dropdown "Plan elegido" del Google Form.
+// Fuente de verdad: la lista real de opciones del form.
+const PLAN_OPTIONS = [
+  'Prepago',
+  'PLAN PRO 11',
+  'PLAN PRO 13 ILIMITADO',
+  'PLAN PRO 16',
+  'PLAN PRO 20',
+  'PLAN PRO 30',
+  'PLAN PRO ILIMITADO',
+  'PLAN 10',
+];
+
+// Códigos cortos que escribe el operador → plan canónico.
+// "30" → "PLAN PRO 30", "13" → "PLAN PRO 13 ILIMITADO", etc.
+// El valor es la forma COMPLETA que espera el dropdown del form.
+const PLAN_ALIASES = {
+  '10': 'PLAN 10',
+  '11': 'PLAN PRO 11',
+  '13': 'PLAN PRO 13 ILIMITADO',
+  '16': 'PLAN PRO 16',
+  '20': 'PLAN PRO 20',
+  '30': 'PLAN PRO 30',
+  'ilimitado': 'PLAN PRO ILIMITADO',
+};
+
+// Prefijos que se sacan para mostrar el plan en el resultado formateado:
+// "PLAN PRO 30" → "PRO 30", "PLAN 10" → "10".
+// El dropdown del form recibe la forma completa; el texto copiado, la
+// corta ("PLAN: PRO 30" en lugar de "PLAN: PLAN PRO 30").
+const PLAN_PREFIX = /^PLAN\s+/i;
+
+// Normaliza texto para comparar planes: sin acentos, minúsculas y sin
+// espacios extra. Permite que "plan pro 30" y "PLAN PRO 30" sean el
+// mismo plan sin depender de cómo lo escribió el operador.
+function normalizePlanKey(s) {
+  if (!s) return '';
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Normaliza el plan que escribe el operador:
+//   "30"                → "PLAN PRO 30"
+//   "pro 30"            → "PLAN PRO 30"
+//   "PLAN PRO 30"       → "PLAN PRO 30" (forma canónica)
+//   "pro 13 ilimitado"  → "PLAN PRO 13 ILIMITADO"
+//   "ilimitado"         → "PLAN PRO ILIMITADO"
+//   "Plan Anual"        → "Plan Anual" (texto libre, sin cambios)
+function normalizePlan(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+
+  const key = normalizePlanKey(trimmed);
+
+  // 1. Ya es un plan de la lista → forma canónica
+  const exact = PLAN_OPTIONS.find(
+    (option) => normalizePlanKey(option) === key,
+  );
+  if (exact) return exact;
+
+  // 2. Alias conocido: "30" → "PLAN PRO 30", "ilimitado" → "PLAN PRO ILIMITADO"
+  if (PLAN_ALIASES[key]) return PLAN_ALIASES[key];
+
+  // 3. Código numérico desconocido: "45" → "PLAN PRO 45"
+  if (/^\d+$/.test(trimmed)) {
+    return `PLAN PRO ${trimmed}`;
+  }
+
+  // 4. Forma corta: "pro 30", "pro 13 ilimitado"
+  const short = trimmed.match(/^pro\s+(\d+)(\s+ilimitado)?$/i);
+  if (short) {
+    const code = short[1];
+    if (short[2]) return `PLAN PRO ${code} ILIMITADO`;
+    return PLAN_ALIASES[code] || `PLAN PRO ${code}`;
+  }
+
+  // 5. Texto libre: no se toca
+  return trimmed;
+}
+
+// Forma corta del plan para mostrar en el resultado formateado:
+// "PLAN PRO 30" → "PRO 30", "PLAN 10" → "10", "Prepago" → "Prepago".
+function formatPlanForOutput(plan) {
+  const trimmed = (plan || '').trim();
+  if (!trimmed) return '';
+  return trimmed.replace(PLAN_PREFIX, '').trim() || trimmed;
+}
+
 // Procesa el textarea de chat: ID, DN (+52), EID (solo ESIM, 5 dígitos)
 function parseChatField(text, productKey) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -167,7 +259,8 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     plan: planOverride = '',
     chatId: chatIdOverride = '',
     dnChat: dnChatOverride = '',
-    eid: eidOverride = ''
+    eid: eidOverride = '',
+    etiquetas: etiquetasOverride = [],
   } = fieldOverrides;
   const get = (key) => {
     const match = raw.match(new RegExp(key + '(?:[ \\t]*:[ \\t]*|[ \\t]+)(.+)', 'i'));
@@ -248,11 +341,18 @@ function parseData(raw, productKey, lineaRawText = '', cacRawText = '', direccio
     eidValid,
     fvc,
     nombreCAV,
-    plan: planOverride.trim() || lineaData.plan || get('PLAN') || '',
+    plan: normalizePlan(planOverride.trim() || lineaData.plan || get('PLAN') || ''),
+    planRaw: (planOverride.trim() || lineaData.plan || get('PLAN') || '').trim(),
+    planShort: formatPlanForOutput(
+      normalizePlan(planOverride.trim() || lineaData.plan || get('PLAN') || ''),
+    ),
     nip: lineaData.nip || get('NIP') || '',
     nombreTitular: lineaData.nombreTitular || get('NOMBRE TITULAR') || '',
     esEsim,
-    esCAC: !!nombreCAV
+    esCAC: !!nombreCAV,
+    etiquetas: Array.isArray(etiquetasOverride)
+      ? etiquetasOverride.filter((tag) => typeof tag === 'string' && tag.trim() !== '')
+      : [],
   };
 }
 
@@ -262,6 +362,10 @@ if (typeof module !== 'undefined' && module.exports) {
     cleanPhone,
     isEsimProduct,
     formatDnChat,
+    normalizePlan,
+    formatPlanForOutput,
+    PLAN_ALIASES,
+    PLAN_OPTIONS,
     parseChatField,
     parseLineaField,
     parseCacField,

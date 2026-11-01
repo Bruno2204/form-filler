@@ -3,6 +3,10 @@ import {
   cleanPhone,
   isEsimProduct,
   formatDnChat,
+  normalizePlan,
+  formatPlanForOutput,
+  PLAN_ALIASES,
+  PLAN_OPTIONS,
   parseChatField,
   parseLineaField,
   parseCacField,
@@ -629,4 +633,122 @@ describe('parseData', () => {
       expect(result.dnContacto).toBe('');
     },
   );
+
+  it('normaliza el plan del override: "30" → "PLAN PRO 30"', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', { plan: '30' });
+    expect(result.plan).toBe('PLAN PRO 30');
+    expect(result.planRaw).toBe('30');
+    expect(result.planShort).toBe('PRO 30');
+  });
+
+  it('el plan del resultado va sin el prefijo "PLAN"', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', { plan: '20' });
+    expect(result.plan).toBe('PLAN PRO 20');
+    expect(result.planShort).toBe('PRO 20');
+  });
+
+  it('planShort quita el prefijo solo si está', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', { plan: 'Prepago' });
+    expect(result.planShort).toBe('Prepago');
+  });
+
+  it('mantiene el plan en texto libre tal cual', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', { plan: 'Plan Anual' });
+    expect(result.plan).toBe('Plan Anual');
+    expect(result.planRaw).toBe('Plan Anual');
+  });
+
+  it('devuelve las etiquetas de contacto del override', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetas: ['Reapertura', 'Prospección IA'],
+    });
+    expect(result.etiquetas).toEqual(['Reapertura', 'Prospección IA']);
+  });
+
+  it('devuelve las etiquetas vacías cuando no hay override', () => {
+    const result = parseData('', 'POS_ESIM');
+    expect(result.etiquetas).toEqual([]);
+  });
+
+  it('ignora un override de etiquetas que no es un array', () => {
+    const result = parseData('', 'POS_ESIM', '', '', '', {
+      etiquetas: 'Reapertura',
+    });
+    expect(result.etiquetas).toEqual([]);
+  });
+});
+
+// ─── Phase 4: Plan Normalization ────────────────────────────────────────────────
+describe('normalizePlan', () => {
+  it('resuelve los códigos cortos al nombre completo del plan', () => {
+    expect(normalizePlan('30')).toBe('PLAN PRO 30');
+    expect(normalizePlan('20')).toBe('PLAN PRO 20');
+    expect(normalizePlan('16')).toBe('PLAN PRO 16');
+    expect(normalizePlan('13')).toBe('PLAN PRO 13 ILIMITADO');
+    expect(normalizePlan('11')).toBe('PLAN PRO 11');
+    expect(normalizePlan('10')).toBe('PLAN 10');
+  });
+
+  it('canonicaliza la forma "pro N"', () => {
+    expect(normalizePlan('pro 30')).toBe('PLAN PRO 30');
+    expect(normalizePlan('PRO 30')).toBe('PLAN PRO 30');
+    expect(normalizePlan('Pro 30')).toBe('PLAN PRO 30');
+    expect(normalizePlan('  30  ')).toBe('PLAN PRO 30');
+  });
+
+  it('respeta el sufijo ILIMITADO', () => {
+    expect(normalizePlan('pro 13 ilimitado')).toBe('PLAN PRO 13 ILIMITADO');
+    expect(normalizePlan('PLAN PRO 13 ILIMITADO')).toBe('PLAN PRO 13 ILIMITADO');
+    expect(normalizePlan('PLAN PRO ILIMITADO')).toBe('PLAN PRO ILIMITADO');
+    expect(normalizePlan('ilimitado')).toBe('PLAN PRO ILIMITADO');
+  });
+
+  it('deja intactos los planes que ya vienen en forma canónica', () => {
+    expect(normalizePlan('PLAN PRO 30')).toBe('PLAN PRO 30');
+    expect(normalizePlan('PLAN PRO 20')).toBe('PLAN PRO 20');
+    expect(normalizePlan('PLAN 10')).toBe('PLAN 10');
+    expect(normalizePlan('Prepago')).toBe('Prepago');
+  });
+
+  it('no toca los planes de texto libre', () => {
+    expect(normalizePlan('Plan Anual')).toBe('Plan Anual');
+    expect(normalizePlan('Fibra')).toBe('Fibra');
+  });
+
+  it('deja intactos los códigos numéricos desconocidos', () => {
+    expect(normalizePlan('99')).toBe('PLAN PRO 99');
+  });
+
+  it('maneja entrada vacía', () => {
+    expect(normalizePlan('')).toBe('');
+    expect(normalizePlan(null)).toBe('');
+    expect(normalizePlan(undefined)).toBe('');
+  });
+
+  it('formatPlanForOutput saca el prefijo "PLAN"', () => {
+    expect(formatPlanForOutput('PLAN PRO 30')).toBe('PRO 30');
+    expect(formatPlanForOutput('PLAN PRO 13 ILIMITADO')).toBe(
+      'PRO 13 ILIMITADO',
+    );
+    expect(formatPlanForOutput('PLAN 10')).toBe('10');
+    expect(formatPlanForOutput('Prepago')).toBe('Prepago');
+    expect(formatPlanForOutput('')).toBe('');
+  });
+
+  it('la lista de planes del form es la fuente de verdad', () => {
+    expect(PLAN_OPTIONS).toEqual([
+      'Prepago',
+      'PLAN PRO 11',
+      'PLAN PRO 13 ILIMITADO',
+      'PLAN PRO 16',
+      'PLAN PRO 20',
+      'PLAN PRO 30',
+      'PLAN PRO ILIMITADO',
+      'PLAN 10',
+    ]);
+    // Todo alias apunta a un plan que existe en el form.
+    for (const alias of Object.values(PLAN_ALIASES)) {
+      expect(PLAN_OPTIONS).toContain(alias);
+    }
+  });
 });
