@@ -376,6 +376,53 @@ Antes se contaba un intento como un acierto y el panel podía dar un ✅ falso.
   etiquetas de la Pág 1 usa `minScore = 95`; el de planes usa `0` (porque
   resuelve códigos cortos como "30" → "PLAN PRO 30").
 
+### Esperas: MICROTASK primero, nunca fija
+
+**Regla del proyecto: NUNCA `sleep(ms)` para esperar un cambio de estado del
+DOM.** Se usa `waitFor(predicado, timeout)`, que espera en **dos fases**:
+
+1. **Microtask** (primero, y es lo habitual). Google Forms corre sobre Angular:
+   tras el click, el change detection se dispara al **vaciar el microtask
+   queue**. Un yield de microtask alcanza para que el DOM ya esté actualizado.
+2. **Macrotask** (respaldo). Si el cambio no llegó por microtask (un rAF o un
+   timer dentro del form), se cede al event loop. El primer fallback usa **0 ms**
+   (el cambio se aplica al final de la tarea en curso) y después se separa:
+   `[0, 0, 1, 2, 4, 8]` y luego 16 ms.
+
+**Por qué el orden importa.** Un microtask **no deja pintar al navegador**; un
+macrotask sí. Medido en el navegador (simulando el change detection de Angular):
+
+| Estrategia | Tiempo | Pinturas |
+|------------|--------|----------|
+| `setTimeout(16)` (macrotask) | 34 ms | **4** → el menú se ve parpadear |
+| Yield de microtask | **0 ms** | **0** → el menú nunca se ve |
+
+O sea: con microtask primero, el relleno no sólo es rápido — **el menú abierto
+no llega a pintarse nunca**. El operador sólo ve el dropdown ya con el valor.
+
+**No cerrar el popup con Escape.** Tras seleccionar, NO se llama
+`closeListbox`: Google Forms cierra el popup solo en su propio ciclo, y Escape
+podría **deseleccionar** lo recién elegido. `closeListbox` queda sólo para la
+ruta de fallo (donde no hay selección que perder).
+
+**La detección de "ya está abierto" va ACOTADA a la opción buscada.** La Pág 1
+tiene varios dropdowns ("Nombre" con 25 opciones, "Producto" con 64) y al abrir
+uno sus opciones se van a un popup en el body. Si la detección mirara
+*CUALQUIER* opción fuera del trigger, el dropdown siguiente creería que ya
+está abierto sin haberlo abierto: el click caería sobre la opción recortada
+(que no recibe el click) y no se seleccionaría nada. Por eso
+`hasPopupOption(trigger, valor)` busca sólo la opción con ese `data-value`.
+
+Reglas:
+
+- El `timeout` de `waitFor` es el **peor caso**, no el caso normal. No se
+  agranda "por las dudas": un timeout holgado hace que un fallo tarde más en
+  detectarse.
+- Después de un click, la verificación mira **todas** las opciones con ese
+  `data-value` (`isSelectedAnywhere`): el marcador puede quedar en la copia
+  del popup o en el original del trigger.
+
+
 ### DOM real de los dropdowns de Google Forms
 
 Verificado contra el form real (experimento del botón de prueba). **Ojo: el click
@@ -512,6 +559,9 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] `tests/dropdown.test.js` actualizado
 - [ ] Verificar el dropdown sobre el form real (Pág 1 para "Nombre", Pág 3 para "Plan
       elegido" y "Usuario Backend")
+- [ ] **Nunca `sleep(ms)` para esperar un cambio del DOM**: usar `waitFor`
+      (microtask primero). Un sleep fijo se paga completo aunque el cambio
+      ya haya ocurrido, y hace que el navegador pinte el menú abierto
 
 ### Cambios en manifest
 
@@ -549,6 +599,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | `tests/dropdown.test.js` | `content/utils.js`: matching de opciones y etiquetas (puro, sin DOM) |
 | `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` y `selectDropdownByHeading` con un mini-DOM simulado |
 | `tests/dropdown-tags.test.js` | Matching de las 38 etiquetas del panel contra el catálogo REAL del dropdown del form (63 opciones) |
+| `tests/timing.test.js` | Tiempos de las esperas activas: que el camino feliz NO duerma (para que no se pinte el menú) |
 
 El resto del código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
 
@@ -566,6 +617,64 @@ El resto del código DOM de `content/` **no** tiene tests: se verifica a mano co
 - `git add -p` con la entrada pipeada se puede quedar sin respuestas y dejar hunks sin
   staged: **siempre** revisar `git diff --cached` antes de commitear, y verificar que el
   árbol del commit nuevo sea el esperado (`git rev-parse 'HEAD^{tree}'`).
+
+---
+
+## Errores cometidos (leer antes de tocar `content/helpers.js`)
+
+Esta sección existe porque los tres errores de abajo **pasaron los tests** y sólo
+se detectaron contra el form real. Ninguno se deduce leyendo el código.
+
+### 1. `closeListbox` (Escape) en la ruta de ÉXITO deseleccionaba
+
+Se agregó "cerrar el popup tras seleccionar" para quitar el tiempo muerto entre
+dropdowns. Error: `closeListbox` manda **Escape**, y Escape sobre un listbox
+abierto **deselecciona** lo recién elegido. La secuencia era click → verificar
+`aria-selected=true` ✓ → Escape → Forms revierte → devolver `ok:true` mentiroso.
+
+Antes de este cambio, `closeListbox` sólo se usaba en la ruta de **fallo**
+(donde no hay selección que perder). **No volver a meterlo en la ruta de éxito.**
+
+### 2. La detección de "dropdown abierto" miraba CUALQUIER opción
+
+`hasPopup(trigger)` devolvía `true` si había cualquier opción fuera del
+trigger. En la Pág 1 hay varios dropdowns y al abrir uno sus opciones se van a
+un popup en el body → el dropdown siguiente creía que ya estaba abierto sin
+haberlo abierto → el click caía sobre la opción recortada (que no recibe el
+click) → **no seleccionaba nada**.
+
+Por eso `hasPopupOption(trigger, valor)` busca sólo la opción con ese
+`data-value`.
+
+### 3. El mini-DOM de los tests era demasiado permisivo
+
+El mock inicial marcaba `aria-selected` con cualquier click y movía las
+opciones en un microtask. Con eso el test de regresión **pasaba con el bug y
+sin él**: no probaba nada.
+
+Para que un test del DOM de Forms sirva, el mock tiene que replicar **las
+tres** cosas del DOM real:
+
+| Comportamiento real | Por qué importa |
+|----------------------|----------------|
+| Las opciones se mueven a un popup en el **body** | El popup de un dropdown confunde a los demás |
+| La mudanza tarda un **macrotask** (layout) | Con microtask el `await` se reanuda después y enmascara la detección prematura |
+| La opción recortada (dentro del trigger) **no** recibe el click | Si no, el click "funciona" siempre y el test no falla |
+
+**Regla: un test de regresión tiene que FALLAR con el bug aplicado.** Si pasa
+con y sin el fix, no sirve. Verificar revirtiendo el fix a mano.
+
+### Reglas de proceso que fallan
+
+- **No presentar como "pedido por el usuario" algo que fue interpretación
+  propia.** Una vez se anunció "el punto que pediste" sobre un cambio que el
+  usuario sólo había descrito como síntoma. Si la solución sale de una
+  inferencia, se dice: "esto es lo que encontré que podría ser la causa".
+- **Trabajar en una rama desde el principio**, no sobre master (aunque el
+  working tree esté limpio: un commit accidental sobre master ya no se
+  deshace fácil).
+- **Un cambio de performance se mide antes de darse por bueno.** Los tiempos
+  se comparan con un banco, no con la impresión.
 
 ---
 
