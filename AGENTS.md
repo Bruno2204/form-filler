@@ -662,6 +662,8 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] `popup.html`: textarea (`input-helper-*`) o botón nuevo
 - [ ] `popup.js`: `HELPER_FIELDS` (cache) + render + botón `Copiar`
 - [ ] `tests/helper.test.js`: caso de la función pura
+- [ ] `tests/helper-panel.test.js`: el render (el mini-DOM monta `popup.js` y
+      dispara el evento `input`: un `ReferenceError` en esa ruta sale acá)
 - [ ] Cache: `input_cache_helper-{field}` + reset en **Limpiar** del helper
 - [ ] Si cambia la normalización de DNs: actualizar el test de equivalencia
       con `cleanPhone()` de `parser.js`
@@ -707,6 +709,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | `tests/dropdown-tags.test.js` | Matching de las 38 etiquetas del panel contra el catálogo REAL del dropdown del form (63 opciones) |
 | `tests/timing.test.js` | Tiempos de las esperas activas: que el camino feliz NO duerma (para que no se pinte el menú) |
 | `tests/helper.test.js` | `helper.js`: validación de la línea, nombre completo, bloque CAC y fecha por defecto |
+| `tests/helper-panel.test.js` | Render del helper en `popup.js`: mini-DOM + evento `input` real (smoke test del glue de DOM) |
 
 El resto del código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
 
@@ -771,6 +774,36 @@ tres** cosas del DOM real:
 **Regla: un test de regresión tiene que FALLAR con el bug aplicado.** Si pasa
 con y sin el fix, no sirve. Verificar revirtiendo el fix a mano.
 
+### 4. Un `ReferenceError` en el render del helper llegó al navegador
+
+El render del helper vive en `popup.js`, y `popup.js` estaba explícitamente
+fuera de los tests (`vitest.config.mjs`: "DOM-coupled code … is out of scope").
+Efecto: una variable sin declarar (`now`) en `renderHelperCac()` **no la
+detectaba ningún test** y llegó al panel del operador como
+`Uncaught ReferenceError: now is not defined`.
+
+El fix fue un minuto de más, pero el bug había llegado a producción. El hueco
+no era el código: era **no tener tests del glue de DOM de `popup.js`**.
+
+Ahora `tests/helper-panel.test.js` monta un mini-DOM (mismo patrón que
+`tests/helpers.test.js`, sin jsdom), importa `popup.js` y dispara el evento
+`input` real: es el camino que usa el operador. Cualquier variable sin
+declarar en el render revienta el test.
+
+**Reglas que salen de acá:**
+
+- El mini-DOM tiene que replicar lo que el código usa: `classList` real
+  (`add`/`remove`/`contains`/`toggle`), `e.target` en los eventos disparados
+  (el click de un producto lee `e.target.getAttribute('data-product')`) y
+  `querySelectorAll('.btn-product')` devolviendo botones con su
+  `data-product`.
+- En el navegador `parser.js` / `helper.js` / `popup.js` son **scripts
+  clásicos**: sus funciones top-level son GLOBALS y `popup.js` las llama por
+  nombre. El test tiene que replicar ese entorno (puente explícito a
+  `globalThis`) o el código bajo prueba no encuentra lo que llama.
+- Verificado: con el bug aplicado el test falla con el mismo mensaje que el
+  navegador (`ReferenceError: now is not defined`).
+
 ### Reglas de proceso que fallan
 
 - **No presentar como "pedido por el usuario" algo que fue interpretación
@@ -782,6 +815,11 @@ con y sin el fix, no sirve. Verificar revirtiendo el fix a mano.
   deshace fácil).
 - **Un cambio de performance se mide antes de darse por bueno.** Los tiempos
   se comparan con un banco, no con la impresión.
+- **Una extensión cargada en el navegador corre el código que estaba en disco
+  cuando se cargó.** Si se edita un archivo y el panel sigue con el error
+  viejo, no es que el fix no esté: hay que recargar la extensión y reabrir
+  el panel. Antes de culpar al código, comparar la línea del stack trace con
+  el archivo actual.
 
 ---
 
