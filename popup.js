@@ -496,6 +496,12 @@ const FIELD_LABELS = {
   dnSame: 'DN portar y adicional (deben ser distintos)',
 };
 
+// Valor de un input por id ('' si no existe).
+function valueOf(id) {
+  const el = document.getElementById(id);
+  return el ? el.value : '';
+}
+
 // Pega del portapapeles en el input; si ya tiene contenido, añade en nueva línea
 async function pasteIntoInput(inputEl) {
   inputEl.focus();
@@ -533,11 +539,58 @@ function copyText(text) {
   document.body.removeChild(helper);
 }
 
+// Feedback visual del botón "Copiar" (usado por el resultado y el helper).
+function flashCopyButton(btn) {
+  if (!btn) return;
+  const original = btn.textContent;
+  btn.textContent = '¡Copiado!';
+  btn.style.background = '#0f9d58';
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.style.background = 'var(--success)';
+  }, 1500);
+}
+
+// Doble clic → pegar del portapapeles (nueva línea si ya hay contenido).
+// Se usa mousedown para no interferir con la selección nativa del dblclick.
+function attachPasteOnDoubleClick(el) {
+  let lastClickTime = 0;
+  el.addEventListener('mousedown', (e) => {
+    const now = Date.now();
+    if (now - lastClickTime < 300) {
+      e.preventDefault(); // evita selección de texto
+      pasteIntoInput(el);
+      lastClickTime = 0;
+      return;
+    }
+    lastClickTime = now;
+  });
+}
+
 let activeProduct = 'POS_ESIM';
 let missingPanelOpen = false;
 // Último resultado formateado. No se muestra en el panel: el botón
 // "Copiar" lo manda al portapapeles.
 let lastResult = '';
+
+// Vista auxiliar (helper): valida y formatea datos, no rellena el form.
+// Es una vista ALTERNATIVA al flujo de producto, no un producto más.
+let helperMode = false;
+
+// Los campos del helper son textareas propios: viven fuera de
+// ALL_INPUT_FIELDS (que asume campos de producto) y se cachean aparte.
+const HELPER_FIELDS = ['helper-linea', 'helper-nombres', 'helper-cac'];
+
+// Escapa texto que viene del portapapeles del operador antes de meterlo
+// en innerHTML.
+function escapeHtml(value) {
+  return String(value === undefined || value === null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Estado de interacción: qué campos han sido tocados al menos una vez.
 // Se usa para evitar mostrar inline alerts (phone-alert-*, chat-alert-*) en
@@ -570,14 +623,9 @@ function selectProduct(productKey) {
   localStorage.setItem('active_product', productKey);
   resetTouched();
 
-  // Marcar botón activo
-  document.querySelectorAll('.btn-product').forEach((btn) => {
-    if (btn.getAttribute('data-product') === productKey) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
+  // Elegir un producto saca del helper (son vistas excluyentes).
+  // setHelperMode(false) deja el botón del producto activo.
+  setHelperMode(false);
 
   // Mostrar/ocultar textareas correspondientes
   const allowedFields = PRODUCT_FIELDS[productKey] || [];
@@ -594,6 +642,35 @@ function selectProduct(productKey) {
 
   // Forzar actualización del procesamiento de datos
   processData();
+}
+
+// Marca el botón activo: el del helper o el del producto, nunca los dos.
+function updateActiveButtons() {
+  document.querySelectorAll('.btn-product').forEach((btn) => {
+    btn.classList.toggle(
+      'active',
+      !helperMode && btn.getAttribute('data-product') === activeProduct,
+    );
+  });
+  const helperBtn = document.getElementById('btn-helper');
+  if (helperBtn) helperBtn.classList.toggle('active', helperMode);
+}
+
+// Muestra la vista del helper o el flujo de producto (son excluyentes).
+function setHelperMode(enabled) {
+  helperMode = enabled;
+
+  ['main-content', 'main-result', 'main-actions'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('view-hidden', enabled);
+  });
+
+  const helperContainer = document.getElementById('helper-container');
+  if (helperContainer) helperContainer.classList.toggle('view-hidden', !enabled);
+
+  updateActiveButtons();
+
+  if (enabled) updateHelperResults();
 }
 
 // Overrides de los campos dedicados (plan, chat, eid, etiquetas).
@@ -627,6 +704,192 @@ function getSelectedTags() {
     return !!(el && el.checked);
   }).map((tag) => tag.label);
   return mergeTagLabels(checked, [getDropdownTag()]);
+}
+
+// ─── ZONA AUXILIAR (HELPER) ─────────────────────────────────────────────────
+//
+// Valida y formatea datos. NO rellena el Google Form: es un helper para
+// revisar los datos antes de cargarlos. La lógica vive en helper.js.
+
+// Reporte de la validación de la línea: un renglón por dato.
+function renderHelperLinea() {
+  const report = document.getElementById('helper-linea-report');
+  const input = document.getElementById('input-helper-linea');
+  if (!report || !input) return;
+
+  if (!input.value.trim()) {
+    report.innerHTML = '';
+    return;
+  }
+
+  const result = validateLineaData(input.value);
+  const parts = [];
+
+  if (result.problems > 0) {
+    parts.push(
+      `<div class="helper-summary invalid">⚠ ${result.problems} problema(s) en los datos</div>`,
+    );
+  } else if (result.missing.length > 0) {
+    parts.push(
+      `<div class="helper-summary warn">⚠ Faltan: ${escapeHtml(result.missing.join(', '))}</div>`,
+    );
+  } else {
+    parts.push(
+      '<div class="helper-summary ok">✓ Datos de línea correctos</div>',
+    );
+  }
+
+  result.checks.forEach((check) => {
+    parts.push(
+      `<div class="helper-check ${check.status}">` +
+        `<span class="helper-check-label">${escapeHtml(check.label)}</span>` +
+        `<span class="helper-check-detail">${escapeHtml(check.detail)}</span>` +
+        `</div>`,
+    );
+  });
+
+  // Números que el parser descarta en silencio (no son NIP ni DN).
+  result.oddNumbers.forEach((number) => {
+    parts.push(
+      '<div class="helper-check invalid">' +
+        '<span class="helper-check-label">Número no reconocido</span>' +
+        `<span class="helper-check-detail">${escapeHtml(number)} (no es NIP ni DN)</span>` +
+        '</div>',
+    );
+  });
+
+  // Texto que el parser ignora: no es un error, pero el operador tiene que
+  // saber que esa línea no se va a usar.
+  result.extraTexts.forEach((text) => {
+    parts.push(
+      '<div class="helper-check missing">' +
+        '<span class="helper-check-label">Texto sin usar</span>' +
+        `<span class="helper-check-detail">${escapeHtml(text)}</span>` +
+        '</div>',
+    );
+  });
+
+  report.innerHTML = parts.join('');
+}
+
+// Nombre completo a partir del bloque de la CURP.
+function renderHelperNombres() {
+  const result = document.getElementById('helper-nombres-result');
+  const input = document.getElementById('input-helper-nombres');
+  if (!result || !input) return;
+
+  const value = formatFullName(input.value);
+  result.textContent = value || '—';
+  result.classList.toggle('helper-result-empty', !value);
+}
+
+// Bloque CAC: nombre del CAC, CP y FVC (fecha por defecto: el día siguiente).
+function renderHelperCac() {
+  const result = document.getElementById('helper-cac-result');
+  const report = document.getElementById('helper-cac-report');
+  const input = document.getElementById('input-helper-cac');
+  if (!result || !input) return;
+
+  if (!input.value.trim()) {
+    result.textContent = '—';
+    result.classList.add('helper-result-empty');
+    if (report) report.innerHTML = '';
+    return;
+  }
+
+  // Un solo reloj para las dos lecturas: si el parseo y el formateo
+  // tomaran el reloj por separado, cruzando la medianoche darían
+  // fechas distintas.
+  const now = new Date();
+  const parsed = parseCacBlock(input.value, now);
+  result.textContent = formatCacBlock(input.value, now);
+  result.classList.remove('helper-result-empty');
+
+  if (!report) return;
+  const parts = [];
+  if (parsed.fechaSource === 'default') {
+    parts.push(
+      '<div class="helper-summary info">ℹ Fecha por defecto: el día siguiente</div>',
+    );
+  }
+  parsed.warnings.forEach((warning) => {
+    parts.push(
+      `<div class="helper-check invalid"><span class="helper-check-detail">${escapeHtml(warning)}</span></div>`,
+    );
+  });
+  report.innerHTML = parts.join('');
+}
+
+// Refresca los tres resultados del helper.
+function updateHelperResults() {
+  renderHelperLinea();
+  renderHelperNombres();
+  renderHelperCac();
+}
+
+// Copia un resultado del helper al portapapeles.
+function copyHelperResult(value, btn) {
+  if (!value) {
+    setStatus('⚠ No hay nada para copiar.');
+    return;
+  }
+  copyText(value);
+  flashCopyButton(btn);
+}
+
+// Listeners de la zona auxiliar.
+function setupHelper() {
+  const helperBtn = document.getElementById('btn-helper');
+  if (helperBtn) {
+    helperBtn.addEventListener('click', () => setHelperMode(!helperMode));
+  }
+
+  HELPER_FIELDS.forEach((field) => {
+    const el = document.getElementById(`input-${field}`);
+    if (!el) return;
+
+    el.addEventListener('input', () => {
+      localStorage.setItem(`input_cache_${field}`, el.value);
+      updateHelperResults();
+    });
+
+    attachPasteOnDoubleClick(el);
+  });
+
+  const copyNombres = document.getElementById('btn-helper-nombres-copy');
+  if (copyNombres) {
+    copyNombres.addEventListener('click', () => {
+      copyHelperResult(
+        formatFullName(valueOf('input-helper-nombres')),
+        copyNombres,
+      );
+    });
+  }
+
+  const copyCac = document.getElementById('btn-helper-cac-copy');
+  if (copyCac) {
+    copyCac.addEventListener('click', () => {
+      copyHelperResult(
+        formatCacBlock(valueOf('input-helper-cac'), new Date()),
+        copyCac,
+      );
+    });
+  }
+
+  // Limpiar los textareas del helper (el "Limpiar" del panel no está
+  // visible en esta vista).
+  const clearBtn = document.getElementById('btn-helper-clear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      HELPER_FIELDS.forEach((field) => {
+        const el = document.getElementById(`input-${field}`);
+        if (el) el.value = '';
+        localStorage.removeItem(`input_cache_${field}`);
+      });
+      updateHelperResults();
+      setStatus('🧹 Helper limpio.');
+    });
+  }
 }
 
 // ─── ETIQUETAS: DROPDOWN ────────────────────────────────────────────────────
@@ -1004,15 +1267,7 @@ if (typeof document !== 'undefined') {
 
   document.getElementById('btnCopy').addEventListener('click', () => {
     copyText(lastResult);
-
-    const copyBtn = document.getElementById('btnCopy');
-    copyBtn.textContent = '¡Copiado!';
-    copyBtn.style.background = '#0f9d58';
-
-    setTimeout(() => {
-      copyBtn.textContent = 'Copiar';
-      copyBtn.style.background = 'var(--success)';
-    }, 1500);
+    flashCopyButton(document.getElementById('btnCopy'));
   });
 
   // Limpiar todas las entradas y cache
@@ -1027,6 +1282,12 @@ if (typeof document !== 'undefined') {
       if (el) el.checked = false;
       localStorage.removeItem(`input_cache_${tag.id}`);
     });
+    HELPER_FIELDS.forEach((field) => {
+      const el = document.getElementById(`input-${field}`);
+      if (el) el.value = '';
+      localStorage.removeItem(`input_cache_${field}`);
+    });
+    updateHelperResults();
     localStorage.removeItem(EXTRA_TAG_CACHE_KEY);
     const tagSelect = getTagSelect();
     if (tagSelect) tagSelect.value = '';
@@ -1061,6 +1322,14 @@ if (typeof document !== 'undefined') {
       if (saved) el.value = saved;
     });
 
+    // Cargar los campos del helper (viven en su propio cache)
+    HELPER_FIELDS.forEach((field) => {
+      const el = document.getElementById(`input-${field}`);
+      if (!el) return;
+      const saved = localStorage.getItem(`input_cache_${field}`);
+      if (saved) el.value = saved;
+    });
+
     // Restaurar las etiquetas de contacto marcadas
     CONTACT_TAGS.forEach((tag) => {
       const el = document.getElementById(tag.id);
@@ -1089,9 +1358,6 @@ if (typeof document !== 'undefined') {
     selectProduct(savedProduct);
 
     // Escuchar eventos input y doble clic en cada campo
-    let lastClickEl = null;
-    let lastClickTime = 0;
-
     ALL_INPUT_FIELDS.forEach((field) => {
       const el = document.getElementById(`input-${field}`);
       if (!el) return;
@@ -1105,21 +1371,15 @@ if (typeof document !== 'undefined') {
       });
 
       // Doble clic → pegar del portapapeles (nueva línea si ya hay contenido)
-      // Usamos mousedown para evitar interferencia con la selección nativa de dblclick
-      el.addEventListener('mousedown', (e) => {
-        const now = Date.now();
-        if (lastClickEl === el && now - lastClickTime < 300) {
-          e.preventDefault(); // evita selección de texto
-          pasteIntoInput(el);
-          lastClickEl = null;
-          lastClickTime = 0;
-        } else {
-          lastClickEl = el;
-          lastClickTime = now;
-        }
-      });
+      attachPasteOnDoubleClick(el);
     });
+
+    // Refresca los resultados del helper con lo que se restauró del cache
+    updateHelperResults();
   });
+
+  // Zona auxiliar (helper)
+  setupHelper();
 
   // Asignar click a botones de producto
   document.querySelectorAll('.btn-product').forEach((btn) => {

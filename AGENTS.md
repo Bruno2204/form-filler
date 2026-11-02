@@ -21,9 +21,10 @@ La UI vive en el **panel lateral** (`side_panel` → `popup.html`). No hay popup
 |---------|-----|
 | `manifest.json` | MV3: permisos, side panel, service worker, orden de los content scripts |
 | `background.js` | Abre el side panel al clic en el icono de la extensión |
-| `popup.html` | UI: estilos inline, inputs, checkboxes, botones, resultado |
-| `popup.js` | Lógica UI, plantillas, validación, inyección al form |
+| `popup.html` | UI: estilos inline, inputs, checkboxes, botones, resultado, zona helper |
+| `popup.js` | Lógica UI, plantillas, validación, inyección al form, vista del helper |
 | `parser.js` | Parseo heurístico de textareas → objeto `parsed` |
+| `helper.js` | Zona auxiliar: validación de línea, nombre completo y bloque CAC (funciones puras) |
 | `content/constants.js` | `SELECTORS` del DOM de Google Forms |
 | `content/utils.js` | Helpers puros: normalización de texto, matching de opciones |
 | `content/helpers.js` | Helpers DOM: `setInput`, `findInputByLabel`, `selectDropdownOption`, `fillCheckboxes` |
@@ -40,6 +41,8 @@ Usuario pega datos → popup.js (processData)
               PRODUCT_TEMPLATES → lastResult → botón Copiar
                          ↓
          btn1/btn2/btn3 → chrome.scripting → content/fillPageN.js
+
+Botón Helper → helper.js (validación / formateo) → resultados propios (no toca el form)
 ```
 
 Los content scripts se cargan solos vía `content_scripts` del manifest (en orden):
@@ -318,6 +321,86 @@ siga siendo lo que el operador espera pegar en el sistema de destino.
 
 ---
 
+## Zona auxiliar — Helper (`helper.js`)
+
+Botón **Helper** en el header (al lado de los productos). **No es un producto**: no
+rellena el Google Form, sólo valida y formatea datos. Es una **vista alternativa**
+del panel: al activarla se esconden los campos de producto, el resultado y los
+botones de acción; al elegir un producto vuelve el flujo normal.
+
+| Pieza | Dónde | Qué hace |
+|-------|-------|----------|
+| Botón | `popup.html` (`#btn-helper`) + `.btn-helper` | Abre/cierra la vista del helper |
+| Textareas | `#input-helper-linea`, `#input-helper-nombres`, `#input-helper-cac` | Datos a validar/formatear |
+| Lógica pura | `helper.js` | `validateLineaData`, `formatFullName`, `parseCacBlock`, `formatCacBlock` |
+| UI | `popup.js` (`setupHelper`, `renderHelper*`, `setHelperMode`) | Render y eventos |
+
+`helper.js` se carga como script clásico **después** de `parser.js` y **antes** de
+`popup.js` (ver el `<script>` al final de `popup.html`). Sus funciones son puras
+(sin DOM): se prueban desde `tests/helper.test.js`.
+
+### 1. Validación de la línea
+
+Mismo formato que los textareas de portabilidad (un valor por línea, sin
+etiquetas): 1er teléfono = DN a portar, 2º = DN de contacto, 4 dígitos = NIP,
+línea con `@` = correo.
+
+`validateLineaData(text)` devuelve un check por dato (`ok` / `invalid` /
+`missing`) más `oddNumbers` (números que no son NIP ni DN y el parser
+descarta en silencio) y `extraTexts` (texto que el parser ignora).
+
+- Los DNs se normalizan con la **misma regla que `cleanPhone()`** de `parser.js`
+  (se acepta `+52` / `52` con 12 dígitos). La equivalencia está blindada por un
+  test: si `helperDigits()` y `cleanPhone()` divergen, el test falla.
+- Un número de 5 a 7 dígitos se reporta como **NIP mal pegado**, no como
+  "no encontrado".
+- El `DN de contacto` es **opcional** (en portabilidad es el DN adicional): si
+  falta se muestra neutro, no como error.
+
+### 2. Nombre completo
+
+`formatFullName(text)` arma el nombre completo a partir del bloque de la CURP,
+con o sin etiquetas:
+
+```
+Nombre(s): Carlos Alberto          Carlos Alberto
+Primer apellido: López      →     López
+Segundo apellido: Duarte         Duarte
+```
+
+→ `Carlos Alberto López Duarte`
+
+Las etiquetas se detectan con una **lista cerrada** (`HELPER_NAME_LABEL_RE`), no
+con un patrón genérico "lo que haya antes de los dos puntos": con un patrón
+genérico, `Carlos Alberto Primer apellido: López` (todo en una línea) perdería
+el nombre, porque "Carlos Alberto Primer apellido" parece una etiqueta.
+
+### 3. CAC → CAC / CP / FVC
+
+```
+CAC Hermosillo
+                                              ← (línea vacía)
+Calle: Blvd. Solidaridad 56, Col: El Sahuaro, Hermosillo, Sonora, Cp: 83170
+03/11/2026                                   ← (opcional)
+```
+
+→ tres líneas: `CAC Hermosillo` / `83170` / `03/11/2026` (el mismo formato que
+el textarea "Datos CAC" del panel).
+
+- 1ª línea no vacía → el CAC (textual).
+- Dirección → la 1ª línea que **no** es fecha y termina en 4 o 5 dígitos
+  (`HELPER_CP_RE`). El dígito anterior no puede ser un número, para no tomar los
+  últimos 5 dígitos de un número más largo.
+- Fecha → `dd/mm/yyyy`, `dd/mm/yy` o `dd/mm` (se completa con el año actual).
+  Una línea de 2 partes sólo es una fecha si la segunda parte **cabe como mes**
+  (`03/26` no es una fecha: no trae mes).
+
+**Fecha por defecto (FVC)**: el día siguiente. Si hoy es **sábado o domingo** se
+salta un día extra (sábado → lunes, domingo → martes). El resultado siempre
+lleva el año de 4 dígitos.
+
+---
+
 ## Autocompletado Google Form (`content/`)
 
 Los content scripts se inyectan solos vía `content_scripts` del manifest (no hace falta
@@ -489,6 +572,7 @@ veces** (el contenedor `CP1oW` y su hijo `geS5n`). Consecuencias:
 | `input_cache_{field}` | Valor de cada input (`plan`, `linea`, `curp`, …) |
 | `input_cache_{input-etiqueta-*}` | Estado de cada checkbox de etiquetas (`'1'` / `'0'`) |
 | `input_cache_etiqueta_extra` | Etiqueta elegida en el dropdown (un label) |
+| `input_cache_helper-{field}` | Valor de cada textarea del helper (`helper-linea`, `helper-nombres`, `helper-cac`) |
 
 Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en chat-id / chat-dn / eid al cargar.
 
@@ -499,6 +583,9 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - Panel lateral compacto; **sin** bloque de resultado visible (solo el botón Copiar y los datos faltantes).
 - Botón pegar: icono `⎘`, 22×22 px, clase `.btn-paste`.
 - Productos: grid 4 columnas, clase `.btn-product.active`.
+- **Helper**: botón `.btn-helper` en el mismo grid (8ª celda), clase `.view-hidden`
+  para esconder una vista. Es una vista **alternativa**: nunca hay un producto y el
+  helper activos a la vez.
 - **Eliminado**: `floating-button.js` y modal iframe — no reintroducir sin petición explícita.
 
 ---
@@ -569,6 +656,16 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 - [ ] Documentar permiso nuevo en este archivo
 - [ ] Content script nuevo listado en `content_scripts` (en orden)
 
+### Cambios en la zona auxiliar (helper)
+
+- [ ] `helper.js`: función pura nueva + export en `module.exports`
+- [ ] `popup.html`: textarea (`input-helper-*`) o botón nuevo
+- [ ] `popup.js`: `HELPER_FIELDS` (cache) + render + botón `Copiar`
+- [ ] `tests/helper.test.js`: caso de la función pura
+- [ ] Cache: `input_cache_helper-{field}` + reset en **Limpiar** del helper
+- [ ] Si cambia la normalización de DNs: actualizar el test de equivalencia
+      con `cleanPhone()` de `parser.js`
+
 ---
 
 ## Pruebas manuales recomendadas
@@ -584,6 +681,15 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
    panel (persiste) y **Limpiar** (vuelve al placeholder).
 8. Pág 1 → el dropdown **¿Línea telefónica a la que se comunica?** queda con la
    etiqueta elegida (es un `<select>` del form, no las casillas).
+9. Botón **Helper**: abre la zona auxiliar (los campos de producto se esconden),
+   al elegir un producto vuelve al flujo normal, y sólo un botón queda activo.
+10. Helper → línea con DN de 9 dígitos, NIP de 5 y correo sin `@` → los tres
+    tienen que marcar problema; con datos válidos → "Datos de línea correctos".
+11. Helper → nombre con etiquetas y sin etiquetas → los dos dan el nombre completo.
+12. Helper → CAC sin fecha → la fecha por defecto es el día siguiente (el martes
+    si hoy es lunes; el lunes si hoy es sábado; el martes si hoy es domingo).
+13. Helper → **Limpiar** (el del helper) vacía sus textareas y su cache; recargar
+    el panel conserva lo escrito.
 
 ---
 
@@ -600,6 +706,7 @@ Migración legacy: si `input_cache_eid` contiene saltos de línea, se reparte en
 | `tests/helpers.test.js` | `content/helpers.js`: `fillCheckboxes` y `selectDropdownByHeading` con un mini-DOM simulado |
 | `tests/dropdown-tags.test.js` | Matching de las 38 etiquetas del panel contra el catálogo REAL del dropdown del form (63 opciones) |
 | `tests/timing.test.js` | Tiempos de las esperas activas: que el camino feliz NO duerma (para que no se pinte el menú) |
+| `tests/helper.test.js` | `helper.js`: validación de la línea, nombre completo, bloque CAC y fecha por defecto |
 
 El resto del código DOM de `content/` **no** tiene tests: se verifica a mano contra el form real.
 
@@ -704,3 +811,8 @@ tiene que contar la historia del producto, no la de la depuración.
 | "Reapertura" simple separada de las variantes `Reapertura_*` | Son checkboxes distintos en el form; la simple es la que se usa |
 | La etiqueta del dropdown va a OTRO campo (`etiquetaDropdown`) | El form tiene dos campos distintos: casillas "Etiquetas del contacto" (88 opciones) y dropdown "¿Línea telephone...?" (63 opciones). Son catálogos diferentes |
 | `minScore = 95` para el dropdown de etiquetas | Sin coincidencia exacta, "Reapertura" matchea "Reaperturas META" (prefijo) y se marca la etiqueta vecina |
+| El Helper es una **vista alternativa**, no un producto más | No rellena el Google Form: valida y formatea datos. Por eso es excluyente con la vista de producto y no entra en `PRODUCT_FIELDS` / `PRODUCT_TEMPLATES` |
+| La FVC por defecto es "el día siguiente", y saltando un día extra si hoy es sábado o domingo | Regla pedida por el operador: sábado → lunes, domingo → martes, lunes → martes |
+| La FVC siempre lleva el año de 4 dígitos | El destino espera `dd/mm/yyyy` |
+| Etiquetas de nombres con lista cerrada, no patrón genérico | "Carlos Alberto Primer apellido: López" (una sola línea) perdería el nombre con un patrón genérico |
+| El helper tiene su propio botón **Limpiar** | El "Limpiar" del panel está escondido en la vista del helper: sin él no había forma de vaciar los textareas |
