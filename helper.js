@@ -254,7 +254,50 @@ function formatFullName(text) {
     .join(' ');
 }
 
-// ─── 3. CAC: nombre, CP y FVC ───────────────────────────────────────────────
+// ─── 3. Mensajes de chat con el nombre ─────────────────────────────────────
+
+// Los 4 mensajes que se le mandan al cliente. El placeholder {nombre} se
+// reemplaza por el nombre completo que arma formatFullName().
+//
+// Los dos primeros son para productos CON plan; los dos últimos son los de
+// prepago (PREPAGO y PRE_ESIM, que no tienen plan).
+//
+// OJO: los mensajes con plan terminan en ESPACIO ("con el Plan Pro "). El
+// operador lo manda al cliente y completa el plan escribiéndolo justo
+// después, sin tener que agregar el espacio a mano. No hacer .trim() de
+// estos textos.
+const HELPER_NAME_MESSAGES = [
+  {
+    key: 'cambio-plan',
+    label: 'Cambio cía. + Plan Pro',
+    text: 'Bien, haremos el cambio de compañía a nombre de {nombre} con el Plan Pro ',
+  },
+  {
+    key: 'linea-nueva-plan',
+    label: 'Línea nueva + Plan Pro',
+    text: 'Bien, haremos la línea nueva (con número nuevo) a nombre de {nombre} con el Plan Pro ',
+  },
+  {
+    key: 'cambio-prepago',
+    label: 'Cambio cía. (prepago)',
+    text: 'Bien, haremos el cambio de compañía a nombre de {nombre}',
+  },
+  {
+    key: 'linea-nueva-prepago',
+    label: 'Línea nueva (prepago)',
+    text: 'Bien, haremos la línea nueva (con número nuevo) a nombre de {nombre}',
+  },
+];
+
+// Arma uno de los mensajes con el nombre completo.
+// Devuelve '' si la clave no existe.
+function formatNameMessage(key, fullName) {
+  const message = HELPER_NAME_MESSAGES.find((item) => item.key === key);
+  if (!message) return '';
+  return message.text.replace('{nombre}', String(fullName || '').trim());
+}
+
+// ─── 4. CAC: nombre, CP y FVC ───────────────────────────────────────────────
 
 // Interpreta dd/mm/yyyy, dd/mm/yy o dd/mm (el año por defecto es el actual).
 // Devuelve null si la fecha no existe (31/02) o no se puede interpretar.
@@ -400,6 +443,8 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     validateLineaData,
     formatFullName,
+    formatNameMessage,
+    HELPER_NAME_MESSAGES,
     parseCacBlock,
     formatCacBlock,
     parseDateValue,

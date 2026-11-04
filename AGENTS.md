@@ -375,6 +375,32 @@ con un patrón genérico "lo que haya antes de los dos puntos": con un patrón
 genérico, `Carlos Alberto Primer apellido: López` (todo en una línea) perdería
 el nombre, porque "Carlos Alberto Primer apellido" parece una etiqueta.
 
+#### Mensajes de chat
+
+Debajo del resultado hay **4 botones** (`.btn-msg`, grid de 2 columnas) que
+arman el mensaje que se le manda al cliente con el nombre ya puesto. Los
+textos viven en `HELPER_NAME_MESSAGES` (`helper.js`) y el placeholder `{nombre}`
+se reemplaza por el nombre completo:
+
+| Botón | Mensaje |
+|-------|---------|
+| Cambio cía. + Plan Pro | `Bien, haremos el cambio de compañía a nombre de {nombre} con el Plan Pro ` |
+| Línea nueva + Plan Pro | `Bien, haremos la línea nueva (con número nuevo) a nombre de {nombre} con el Plan Pro ` |
+| Cambio cía. (prepago) | `Bien, haremos el cambio de compañía a nombre de {nombre}` |
+| Línea nueva (prepago) | `Bien, haremos la línea nueva (con número nuevo) a nombre de {nombre}` |
+
+Los dos primeros son para productos **con plan**; los dos últimos son los de
+**prepago** (`PREPAGO` y `PRE_ESIM`, que no tienen plan).
+
+Los dos con plan **terminan en espacio** ("con el Plan Pro "): el operador
+manda el mensaje al cliente y escribe el plan justo después, sin tener que
+agregar el espacio a mano. **No hacer `.trim()` de estos textos** — el test
+`los mensajes con plan dejan un espacio al final` lo blinda.
+
+Al clickear un botón: el mensaje aparece en el resultado de la sección, se
+copia al portapapeles y el botón muestra "¡Copiado!". Si no hay nombre, no
+hace nada y avisa en la barra de estado.
+
 ### 3. CAC → CAC / CP / FVC
 
 ```

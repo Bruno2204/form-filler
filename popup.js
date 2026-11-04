@@ -540,14 +540,17 @@ function copyText(text) {
 }
 
 // Feedback visual del botón "Copiar" (usado por el resultado y el helper).
+// Restaura el texto y el color ORIGINALES: el botón Copiar y los de
+// mensaje tienen colores distintos.
 function flashCopyButton(btn) {
   if (!btn) return;
-  const original = btn.textContent;
+  const originalText = btn.textContent;
+  const originalBackground = btn.style.background;
   btn.textContent = '¡Copiado!';
   btn.style.background = '#0f9d58';
   setTimeout(() => {
-    btn.textContent = original;
-    btn.style.background = 'var(--success)';
+    btn.textContent = originalText;
+    btn.style.background = originalBackground;
   }, 1500);
 }
 
@@ -837,12 +840,54 @@ function copyHelperResult(value, btn) {
   flashCopyButton(btn);
 }
 
+// Genera uno de los mensajes de chat con el nombre completo: lo muestra en
+// el resultado y lo copia al portapapeles.
+function generateNameMessage(key, btn) {
+  const fullName = formatFullName(valueOf('input-helper-nombres'));
+  if (!fullName) {
+    setStatus('⚠ Escribí el nombre primero.');
+    return;
+  }
+
+  const message = formatNameMessage(key, fullName);
+  if (!message) return;
+
+  const result = document.getElementById('helper-nombres-result');
+  if (result) {
+    result.textContent = message;
+    result.classList.remove('helper-result-empty');
+  }
+
+  copyText(message);
+  flashCopyButton(btn);
+  setStatus('📋 Mensaje copiado.');
+}
+
+// Arma los botones de mensajes a partir del catálogo (una sola fuente de
+// verdad: helper.js).
+function populateHelperMessageButtons() {
+  const grid = document.getElementById('helper-msg-grid');
+  if (!grid) return;
+
+  HELPER_NAME_MESSAGES.forEach((message) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-msg';
+    btn.type = 'button';
+    btn.textContent = message.label;
+    btn.title = message.text;
+    btn.addEventListener('click', () => generateNameMessage(message.key, btn));
+    grid.appendChild(btn);
+  });
+}
+
 // Listeners de la zona auxiliar.
 function setupHelper() {
   const helperBtn = document.getElementById('btn-helper');
   if (helperBtn) {
     helperBtn.addEventListener('click', () => setHelperMode(!helperMode));
   }
+
+  populateHelperMessageButtons();
 
   HELPER_FIELDS.forEach((field) => {
     const el = document.getElementById(`input-${field}`);

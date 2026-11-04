@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   validateLineaData,
   formatFullName,
+  formatNameMessage,
+  HELPER_NAME_MESSAGES,
   parseCacBlock,
   formatCacBlock,
   parseDateValue,
@@ -215,7 +217,79 @@ describe('formatFullName', () => {
   });
 });
 
-// ─── 3. CAC ─────────────────────────────────────────────────────────────────
+// ─── 3. Mensajes de chat ────────────────────────────────────────────────────
+
+describe('formatNameMessage', () => {
+  const NOMBRE = 'Carlos Alberto López Duarte';
+
+  it('tiene los 4 mensajes', () => {
+    expect(HELPER_NAME_MESSAGES).toHaveLength(4);
+  });
+
+  it('cambio de compañía con plan', () => {
+    expect(formatNameMessage('cambio-plan', NOMBRE)).toBe(
+      'Bien, haremos el cambio de compañía a nombre de Carlos Alberto López Duarte con el Plan Pro ',
+    );
+  });
+
+  it('línea nueva con plan', () => {
+    expect(formatNameMessage('linea-nueva-plan', NOMBRE)).toBe(
+      'Bien, haremos la línea nueva (con número nuevo) a nombre de Carlos Alberto López Duarte con el Plan Pro ',
+    );
+  });
+
+  it('cambio de compañía sin plan (prepago)', () => {
+    expect(formatNameMessage('cambio-prepago', NOMBRE)).toBe(
+      'Bien, haremos el cambio de compañía a nombre de Carlos Alberto López Duarte',
+    );
+  });
+
+  it('línea nueva sin plan (prepago)', () => {
+    expect(formatNameMessage('linea-nueva-prepago', NOMBRE)).toBe(
+      'Bien, haremos la línea nueva (con número nuevo) a nombre de Carlos Alberto López Duarte',
+    );
+  });
+
+  it('los mensajes de prepago no llevan plan', () => {
+    expect(formatNameMessage('cambio-prepago', NOMBRE)).not.toContain('Plan');
+    expect(formatNameMessage('linea-nueva-prepago', NOMBRE)).not.toContain(
+      'Plan',
+    );
+  });
+
+  it('los mensajes con plan dejan un espacio al final para completar el plan', () => {
+    // El operador lo manda al cliente y escribe el plan justo después:
+    // el espacio tiene que venir en el texto, no agregarlo a mano.
+    expect(formatNameMessage('cambio-plan', NOMBRE).endsWith('Plan Pro ')).toBe(
+      true,
+    );
+    expect(
+      formatNameMessage('linea-nueva-plan', NOMBRE).endsWith('Plan Pro '),
+    ).toBe(true);
+  });
+
+  it('ningún mensaje deja el placeholder sin reemplazar', () => {
+    HELPER_NAME_MESSAGES.forEach((message) => {
+      expect(formatNameMessage(message.key, NOMBRE)).not.toContain('{nombre}');
+    });
+  });
+
+  it('devuelve vacío con una clave desconocida', () => {
+    expect(formatNameMessage('no-existe', NOMBRE)).toBe('');
+  });
+
+  it('arma el mensaje con el nombre que arma formatFullName', () => {
+    const name = formatFullName(
+      'Nombre(s): Carlos Alberto\nPrimer apellido: López\nSegundo apellido: Duarte',
+    );
+
+    expect(formatNameMessage('cambio-plan', name)).toContain(
+      'Carlos Alberto López Duarte',
+    );
+  });
+});
+
+// ─── 4. CAC ─────────────────────────────────────────────────────────────────
 
 describe('parseCacBlock', () => {
   const ADDRESS =

@@ -633,6 +633,45 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
+
+      /* Botones de los mensajes de chat (sección "Nombre Completo") */
+      .helper-msg-title {
+        margin-top: 8px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .helper-msg-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 4px;
+      }
+
+      .btn-msg {
+        font-family: var(--font);
+        padding: 6px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--gray-bg);
+        border: 1px solid var(--gray-border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+      }
+
+      .btn-msg:hover {
+        background: #eef3fd;
+        border-color: var(--primary);
+        color: var(--primary);
+      }
+
+      .btn-msg:active {
+        transform: scale(0.98);
+      }
     </style>
   </head>
 
@@ -992,6 +1031,8 @@
           <pre class="helper-result-text" id="helper-nombres-result">—</pre>
           <button class="btn-copy" id="btn-helper-nombres-copy">Copiar</button>
         </div>
+        <div class="helper-msg-title">Mensajes para el chat</div>
+        <div class="helper-msg-grid" id="helper-msg-grid"></div>
       </div>
 
       <!-- 3. CAC / CP / FVC -->

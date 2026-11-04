@@ -70,8 +70,17 @@ class El {
   getAttribute() {
     return null;
   }
-  appendChild() {}
-  removeChild() {}
+  appendChild(child) {
+    this.children = this.children || [];
+    this.children.push(child);
+    return child;
+  }
+
+  removeChild(child) {
+    this.children = (this.children || []).filter((item) => item !== child);
+    return child;
+  }
+
   querySelector() {
     return null;
   }
@@ -111,6 +120,8 @@ function makeDocument() {
     querySelector: () => null,
     createElement: (tag) => new El(tag),
     addEventListener() {},
+    // copyText() copia con execCommand: el mini-DOM lo acepta.
+    execCommand: () => true,
     body: new El('body'),
   };
   return doc;
@@ -145,6 +156,8 @@ beforeAll(async () => {
   const helper = await import('../helper.js');
   globalThis.validateLineaData = helper.validateLineaData;
   globalThis.formatFullName = helper.formatFullName;
+  globalThis.formatNameMessage = helper.formatNameMessage;
+  globalThis.HELPER_NAME_MESSAGES = helper.HELPER_NAME_MESSAGES;
   globalThis.parseCacBlock = helper.parseCacBlock;
   globalThis.formatCacBlock = helper.formatCacBlock;
 
@@ -239,6 +252,54 @@ describe('render del helper', () => {
     expect(el('helper-cac-result').textContent).toBe(
       'CAC Hermosillo\n83170\n15/12/2026',
     );
+  });
+});
+
+describe('mensajes de chat', () => {
+  function messageButtons() {
+    return el('helper-msg-grid').children || [];
+  }
+
+  it('crea los 4 botones de mensajes', () => {
+    expect(messageButtons()).toHaveLength(4);
+    expect(messageButtons().map((btn) => btn.textContent)).toEqual([
+      'Cambio cía. + Plan Pro',
+      'Línea nueva + Plan Pro',
+      'Cambio cía. (prepago)',
+      'Línea nueva (prepago)',
+    ]);
+  });
+
+  it('el mensaje usa el nombre completo', () => {
+    typeInto(
+      'input-helper-nombres',
+      'Nombre(s): Carlos Alberto\nPrimer apellido: López\nSegundo apellido: Duarte',
+    );
+
+    messageButtons()[0].fire('click');
+
+    expect(el('helper-nombres-result').textContent).toBe(
+      'Bien, haremos el cambio de compañía a nombre de Carlos Alberto López Duarte con el Plan Pro ',
+    );
+  });
+
+  it('el mensaje de prepago no lleva plan', () => {
+    typeInto('input-helper-nombres', 'Carlos Alberto\nLópez\nDuarte');
+
+    messageButtons()[2].fire('click');
+
+    expect(el('helper-nombres-result').textContent).toBe(
+      'Bien, haremos el cambio de compañía a nombre de Carlos Alberto López Duarte',
+    );
+  });
+
+  it('sin nombre no genera mensaje', () => {
+    typeInto('input-helper-nombres', '');
+
+    messageButtons()[0].fire('click');
+
+    expect(el('helper-nombres-result').textContent).not.toContain('Bien,');
+    expect(el('status').textContent).toContain('nombre');
   });
 });
 
